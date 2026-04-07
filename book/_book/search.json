@@ -1,0 +1,42 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Modern Operations Research with Python",
+    "section": "",
+    "text": "0.1 Welcome\nThis is a practical ebook on modern Operations Research using Python.\nCurrent Chapter: - 2. Linear Programming with PuLP",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Modern Operations Research with Python</span>"
+    ]
+  },
+  {
+    "objectID": "chapters/02-linear-programming.html",
+    "href": "chapters/02-linear-programming.html",
+    "title": "2  2. Linear Programming with PuLP",
+    "section": "",
+    "text": "2.1 Introduction\nLinear Programming (LP) is a core technique in Operations Research used to optimize a linear objective subject to linear constraints.\nIn this chapter we solve the classic Diet Problem.",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>2. Linear Programming with PuLP</span>"
+    ]
+  },
+  {
+    "objectID": "chapters/02-linear-programming.html#mathematical-formulation",
+    "href": "chapters/02-linear-programming.html#mathematical-formulation",
+    "title": "2  2. Linear Programming with PuLP",
+    "section": "2.2 Mathematical Formulation",
+    "text": "2.2 Mathematical Formulation\nDecision variables (\\(x_1\\) = servings of Steak, \\(x_2\\) = Chicken, \\(x_3\\) = Rice, \\(x_4\\) = Broccoli)\n\\[\n\\begin{align*}\n\\text{Minimize } & 2.5x_1 + 1.8x_2 + 0.5x_3 + 0.6x_4 \\\\\n\\text{s.t.} \\quad\n& 5x_1 + 6x_2 + x_3 + 2x_4 \\geq 50 \\quad \\text{(Protein)} \\\\\n& 2x_1 + x_2 + 25x_3 + 5x_4 \\geq 200 \\quad \\text{(Carbs)} \\\\\n& 8x_1 + 4x_2 + 0.5x_3 + 0.3x_4 \\leq 80 \\quad \\text{(Fat)} \\\\\n& x_i \\geq 0 \\quad \\forall i\n\\end{align*}\n\\]",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>2. Linear Programming with PuLP</span>"
+    ]
+  },
+  {
+    "objectID": "chapters/02-linear-programming.html#pulp-implementation",
+    "href": "chapters/02-linear-programming.html#pulp-implementation",
+    "title": "2  2. Linear Programming with PuLP",
+    "section": "2.3 PuLP Implementation",
+    "text": "2.3 PuLP Implementation\n```python from pulp import *\nprob = LpProblem(“Diet_Problem”, LpMinimize)\nsteak = LpVariable(“Steak”, lowBound=0) chicken = LpVariable(“Chicken”, lowBound=0) rice = LpVariable(“Rice”, lowBound=0) broccoli = LpVariable(“Broccoli”, lowBound=0)\nprob += 2.5steak + 1.8chicken + 0.5rice + 0.6broccoli\nprob += 5steak + 6chicken + rice + 2broccoli &gt;= 50, “Protein” prob += 2steak + chicken + 25rice + 5broccoli &gt;= 200, “Carbs” prob += 8steak + 4chicken + 0.5rice + 0.3broccoli &lt;= 80, “Fat”\nprob.solve(PULP_CBC_CMD(msg=0))\nprint(“Status:”, LpStatus[prob.status]) print(“Total Cost: $”, round(value(prob.objective), 2))\nfor v in prob.variables(): print(v.name, “=”, round(value(v), 2))",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>2. Linear Programming with PuLP</span>"
+    ]
+  }
+]

@@ -1,0 +1,15 @@
+---
+title: "Modern Operations Research with Python"
+subtitle: "Numerical Optimization • Machine Learning • Data Analysis"
+author: "Troy"
+date: today
+---
+
+## Welcome
+
+This ebook provides a practical, code-first introduction to modern Operations Research using Python.
+
+**Current Chapter**
+- [2. Linear Programming with PuLP](chapters/02-linear-programming.qmd)
+
+More chapters coming soon: Foundations, Integer Programming, Predict-then-Optimize, etc.

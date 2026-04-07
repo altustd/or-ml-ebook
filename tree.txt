@@ -1,0 +1,38 @@
+.
+├── book
+│   ├── chapters
+│   │   ├── 01-linear-programming.qmd
+│   │   └── 02-linear-programming.qmd
+│   ├── index_files
+│   │   └── libs
+│   │       ├── bootstrap
+│   │       │   ├── bootstrap-138a6193a3bd40baf1e627da441a4734.min.css
+│   │       │   ├── bootstrap-icons.css
+│   │       │   ├── bootstrap-icons.woff
+│   │       │   └── bootstrap.min.js
+│   │       ├── clipboard
+│   │       │   └── clipboard.min.js
+│   │       └── quarto-html
+│   │           ├── tabsets
+│   │           │   └── tabsets.js
+│   │           ├── anchor.min.js
+│   │           ├── popper.min.js
+│   │           ├── quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css
+│   │           ├── quarto.js
+│   │           ├── tippy.css
+│   │           └── tippy.umd.min.js
+│   ├── _quarto.yml
+│   ├── index.qmd
+│   └── intro.qmd
+├── data
+│   ├── processed
+│   └── raw
+├── notebooks
+├── src
+│   └── images
+├── LICENSE
+├── README.md
+├── requirements.txt
+└── tree.txt
+
+15 directories, 21 files

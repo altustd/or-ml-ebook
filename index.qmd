@@ -1,5 +1,0 @@
----
-title: "Operational Research Problems"
----
-
-This ebook covers core problems and solutions in Operational Research using Python.
