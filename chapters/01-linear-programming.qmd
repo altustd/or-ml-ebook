@@ -1,0 +1,20 @@
+# Linear Programming
+
+```{python}
+import numpy as np
+from scipy.optimize import linprog
+
+# Maximize x + 2y
+# Subject to:
+# 2x + y <= 20
+# x + y <= 16
+# x <= 9
+# x,y >= 0
+
+c = [-1, -2]
+A = [[2, 1], [1, 1], [1, 0]]
+b = [20, 16, 9]
+
+result = linprog(c, A_ub=A, b_ub=b, bounds=(0, None))
+print("Optimal solution:", result.x)
+print("Optimal value:", -result.fun)
