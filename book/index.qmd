@@ -7,9 +7,10 @@ date: today
 
 ## Welcome
 
-This ebook provides a practical, code-first introduction to modern Operations Research using Python.
+This ebook teaches modern Operations Research using Python, focusing on numerical optimization, machine learning algorithms, and data analysis.
 
-**Current Chapter**
+### Current Chapters
+- [1. Foundations of Data Analysis for Operations Research](chapters/01-foundations.qmd)
 - [2. Linear Programming with PuLP](chapters/02-linear-programming.qmd)
 
-More chapters coming soon: Foundations, Integer Programming, Predict-then-Optimize, etc.
+More chapters coming soon.

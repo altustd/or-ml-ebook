@@ -2,49 +2,34 @@
 title: "2. Linear Programming with PuLP"
 ---
 
-## Introduction
-
-Linear Programming (LP) is a core technique in Operations Research used to optimize a linear objective subject to linear constraints.
-
-In this chapter we solve the classic **Diet Problem**.
-
-## Mathematical Formulation
-
-**Decision variables** ($x_1$ = servings of Steak, $x_2$ = Chicken, $x_3$ = Rice, $x_4$ = Broccoli)
-
-$$
-\begin{align*}
-\text{Minimize } & 2.5x_1 + 1.8x_2 + 0.5x_3 + 0.6x_4 \\
-\text{s.t.} \quad
-& 5x_1 + 6x_2 + x_3 + 2x_4 \geq 50 \quad \text{(Protein)} \\
-& 2x_1 + x_2 + 25x_3 + 5x_4 \geq 200 \quad \text{(Carbs)} \\
-& 8x_1 + 4x_2 + 0.5x_3 + 0.3x_4 \leq 80 \quad \text{(Fat)} \\
-& x_i \geq 0 \quad \forall i
-\end{align*}
-$$
-
-## PuLP Implementation
+## The Classic Diet Problem
 
 ```python
 from pulp import *
 
+# Create the problem
 prob = LpProblem("Diet_Problem", LpMinimize)
 
+# Decision variables
 steak    = LpVariable("Steak",    lowBound=0)
 chicken  = LpVariable("Chicken",  lowBound=0)
 rice     = LpVariable("Rice",     lowBound=0)
 broccoli = LpVariable("Broccoli", lowBound=0)
 
-prob += 2.5*steak + 1.8*chicken + 0.5*rice + 0.6*broccoli
+# Objective function
+prob += 2.5*steak + 1.8*chicken + 0.5*rice + 0.6*broccoli, "Total_Cost"
 
+# Constraints
 prob += 5*steak + 6*chicken + rice + 2*broccoli >= 50, "Protein"
 prob += 2*steak + chicken + 25*rice + 5*broccoli >= 200, "Carbs"
 prob += 8*steak + 4*chicken + 0.5*rice + 0.3*broccoli <= 80, "Fat"
 
+# Solve the problem
 prob.solve(PULP_CBC_CMD(msg=0))
 
+# Results
 print("Status:", LpStatus[prob.status])
-print("Total Cost: $", round(value(prob.objective), 2))
+print("Total Cost: $", round(value(prob.objective), 2), "\n")
 
 for v in prob.variables():
-    print(v.name, "=", round(value(v), 2))
+    print(v.name, "=", round(value(v), 2), "servings")

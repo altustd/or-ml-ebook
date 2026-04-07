@@ -4,7 +4,7 @@
     "href": "index.html",
     "title": "Modern Operations Research with Python",
     "section": "",
-    "text": "0.1 Welcome\nThis is a practical ebook on modern Operations Research using Python.\nCurrent Chapter: - 2. Linear Programming with PuLP",
+    "text": "0.1 Welcome\nThis ebook provides a practical, code-first introduction to modern Operations Research using Python.\nCurrent Chapter - 2. Linear Programming with PuLP\nMore chapters coming soon: Foundations, Integer Programming, Predict-then-Optimize, etc.",
     "crumbs": [
       "<span class='chapter-number'>1</span>  <span class='chapter-title'>Modern Operations Research with Python</span>"
     ]
