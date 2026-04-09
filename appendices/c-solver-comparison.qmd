@@ -1,5 +1,0 @@
----
-title: "C - Solver Comparison"
----
-
-Placeholder for solver comparison.

@@ -1,21 +1,53 @@
 ---
 title: "Modern Operations Research with Python"
+subtitle: "Optimization • Machine Learning • Data-Driven Decision Making"
+author: "altustd"
+date: "2026"
 ---
 
 # Welcome
 
-This book explores the powerful combination of classical **Operations Research** and modern **Machine Learning** using Python.
+This book explores the powerful intersection of **classical Operations Research** and **modern Machine Learning** using Python.
+
+## What You'll Learn
+
+- Core optimization techniques (Linear, Integer, Nonlinear, Stochastic)
+- Network flows and graph-based problems
+- How to integrate Machine Learning with traditional OR methods
+- Practical applications in logistics, supply chain, finance, and scheduling
 
 ## Book Structure
 
-- **Chapter 1**: Introduction to Modern Operations Research with Python
-- **Chapter 2**: Linear Programming
-- **Chapter 3**: Network Optimization
-- **Chapter 4**: Integer Programming
-- **Chapter 5**: Nonlinear Optimization
+**Part 1: Foundations**
+- Chapter 1: Introduction to Modern Operations Research with Python
+- Chapter 2: Linear Programming
+- Chapter 3: Network Optimization
 
-All chapters contain executable Python code examples.
+**Part 2: Advanced Optimization**
+- Chapter 4: Integer Programming
+- Chapter 5: Nonlinear Optimization
+- Chapter 6: Stochastic Optimization
+
+**Part 3: Machine Learning Integration**
+- Chapter 7: Reinforcement Learning in Operations Research
+
+## How to Use This Book
+
+All chapters include fully executable Python code examples using libraries such as:
+- `scipy`, `numpy`, `pandas`
+- `pulp`, `networkx`
+- `scikit-learn`
+
+Activate the project environment and run `quarto render` to build the full book.
 
 :::{.callout-tip}
-Activate the environment with `or-ml-ebook-env` before rendering.
+**Quick Start**
+1. `or-ml-ebook-env`
+2. `pip install -r requirements.txt`
+3. `quarto render`
+4. Open `_book/index.html`
 :::
+
+---
+
+Happy exploring!

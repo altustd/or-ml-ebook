@@ -1,5 +1,0 @@
----
-title: "A - Python Environment and Tools"
----
-
-Placeholder for environment setup.
