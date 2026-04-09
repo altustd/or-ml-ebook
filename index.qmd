@@ -4,7 +4,7 @@ title: "Modern Operations Research with Python"
 
 # Welcome
 
-This book explores the powerful combination of classical **Operations Research** and modern **Machine Learning** using Python.
+This book explores the powerful intersection of classical **Operations Research** and modern **Machine Learning** using Python.
 
 ## Contents
 
@@ -13,10 +13,7 @@ This book explores the powerful combination of classical **Operations Research**
 - **Chapter 3**: Network Optimization
 - **Chapter 4**: Integer Programming
 - **Chapter 5**: Nonlinear Optimization
-- **Chapter 6**: Stochastic Optimization
-- **Chapter 7**: Reinforcement Learning in OR
 
 :::{.callout-tip}
-All chapters contain executable Python code.  
-Activate the environment with `or-ml-ebook-env` and run `quarto render` to build the book.
+Activate the environment with `or-ml-ebook-env` and run `quarto render` to build the full book.
 :::

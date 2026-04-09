@@ -14,8 +14,6 @@ book:
     - book/03-network-optimization.qmd
     - book/04-integer-programming.qmd
     - book/05-nonlinear-optimization.qmd
-    - book/06-stochastic-optimization.qmd
-    - book/07-reinforcement-learning.qmd
 
 format:
   html:
@@ -23,7 +21,6 @@ format:
     toc: true
     number-sections: true
     code-fold: true
-    smooth-scroll: true
   pdf:
     documentclass: scrbook
     number-sections: true
