@@ -1,5 +1,5 @@
 ---
-title: 'Chapter 03: Network Optimization'
+title: 'Network Optimization'
 jupyter: or-ml-ebook-env
 ---
 
@@ -12,7 +12,6 @@ Network Optimization is a powerful branch of Operations Research that deals with
 Find the cheapest/fastest route from a source to a destination in a network.
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-04-09T14:30:38.565085Z', iopub.status.busy: '2026-04-09T14:30:38.564895Z', iopub.status.idle: '2026-04-09T14:30:38.865895Z', shell.execute_reply: '2026-04-09T14:30:38.865498Z'}
 import networkx as nx
 import matplotlib.pyplot as plt
 
@@ -53,7 +52,6 @@ plt.show()
 How much flow can we push from source to sink given capacity constraints?
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-04-09T14:30:38.866969Z', iopub.status.busy: '2026-04-09T14:30:38.866866Z', iopub.status.idle: '2026-04-09T14:30:38.869606Z', shell.execute_reply: '2026-04-09T14:30:38.869258Z'}
 # Maximum Flow Example
 G_flow = nx.DiGraph()
 G_flow.add_edge('S', 'A', capacity=10)

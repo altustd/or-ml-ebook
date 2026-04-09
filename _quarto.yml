@@ -14,6 +14,8 @@ book:
     - book/03-network-optimization.qmd
     - book/04-integer-programming.qmd
     - book/05-nonlinear-optimization.qmd
+    - book/06-stochastic-programming.qmd      # Stochastic Programming
+    - book/07-hybrid-or-ml.qmd                # Hybrid OR-ML (if ready)
 
 format:
   html:

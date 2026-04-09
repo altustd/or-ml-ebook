@@ -1,5 +1,5 @@
 ---
-title: 'Chapter 04: Integer Programming'
+title: 'Integer Programming'
 jupyter: or-ml-ebook-env
 ---
 

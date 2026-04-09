@@ -1,73 +1,116 @@
 ---
-title: 'Chapter 05: Nonlinear Optimization'
-jupyter: or-ml-ebook-env
+title: Nonlinear Optimization
+jupyter: python3
 ---
 
 
-Nonlinear Optimization deals with problems where the objective function and/or constraints are **nonlinear**.
+**Modern Operations Research with Python**
 
+While linear and integer programming cover many problems, many real-world OR applications involve **nonlinear** objectives or constraints (e.g., quadratic costs, economies of scale, convex/concave functions, geometric programming).
 
-## Why Nonlinear Optimization Matters
+In this chapter we explore:
+- Unconstrained and constrained nonlinear programming using **SciPy.optimize**
+- Quadratic Programming (QP) examples
+- Mixed-Integer Nonlinear Programming (MINLP) considerations
+- When to use local vs global solvers
 
-- Many real-world problems are nonlinear (cost curves, physical laws, machine learning loss functions, etc.)
-- Linear Programming is often an approximation — Nonlinear gives more accurate models.
-
-## Classic Example: Portfolio Optimization with Risk
-
-An investor wants to maximize expected return while keeping risk (variance) below a threshold.
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-04-09T14:30:42.435814Z', iopub.status.busy: '2026-04-09T14:30:42.435597Z', iopub.status.idle: '2026-04-09T14:30:42.640021Z', shell.execute_reply: '2026-04-09T14:30:42.639627Z'}
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, Bounds, LinearConstraint, NonlinearConstraint
+import matplotlib.pyplot as plt
+from pulp import *
 
-# Assets: Expected returns and covariance matrix
-assets = ['Stock A', 'Stock B', 'Stock C']
-expected_returns = np.array([0.12, 0.18, 0.10])
-
-# Covariance matrix (risk)
-cov_matrix = np.array([
-    [0.04, 0.02, 0.01],
-    [0.02, 0.09, 0.03],
-    [0.01, 0.03, 0.025]
-])
-
-def portfolio_variance(weights):
-    return weights.T @ cov_matrix @ weights
-
-def negative_return(weights):
-    return -weights @ expected_returns
-
-# Constraints: weights sum to 1, each between 0 and 1
-constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
-bounds = [(0, 1) for _ in assets]
-
-# Initial guess
-initial_weights = np.array([0.333, 0.333, 0.334])
-
-# Optimize (minimize risk for a given return, or maximize return for given risk)
-result = minimize(portfolio_variance, initial_weights, 
-                  method='SLSQP', bounds=bounds, constraints=constraints)
-
-print("Optimal Portfolio Weights:")
-for asset, weight in zip(assets, result.x):
-    print(f"  {asset}: {weight:.4f} ({weight*100:.1f}%)")
-
-print(f"\nPortfolio Variance (Risk): {result.fun:.4f}")
-print(f"Expected Return: {result.x @ expected_returns:.4f} ({result.x @ expected_returns*100:.1f}%)")
+np.random.seed(42)
+print("Libraries loaded: numpy, scipy.optimize, pulp")
 ```
 
-## Key Concepts in Nonlinear Optimization
+## 5.1 Unconstrained Nonlinear Optimization
 
-- **Objective Function** can be quadratic, exponential, logarithmic, etc.
-- **Constraints** can also be nonlinear.
-- Common methods: Gradient Descent, Newton's method, SLSQP, Interior Point methods.
-- Challenges: Local vs global optima, non-convexity, computational cost.
+Classic example: Rosenbrock function (banana function) — a common test problem.
 
-## When to Use Nonlinear Optimization
+```{python}
+def rosenbrock(x):
+    return (1 - x[0])**2 + 100 * (x[1] - x[0]**2)**2
 
-- Portfolio optimization (risk-return tradeoff)
-- Machine learning model training (minimizing loss)
-- Engineering design (minimizing weight or cost with nonlinear physics)
-- Pricing and revenue management
+x0 = np.array([0.0, 0.0])
+result = minimize(rosenbrock, x0, method='Nelder-Mead')
+
+print("Optimal solution:", result.x)
+print("Minimum value:", result.fun)
+print("Success:", result.success)
+```
+
+## 5.2 Constrained Nonlinear Optimization (SciPy)
+
+**Example**: Portfolio optimization with nonlinear risk (variance) and return constraints.
+
+```{python}
+# Simulated asset returns and covariance
+n_assets = 4
+returns = np.array([0.10, 0.15, 0.08, 0.12])
+cov_matrix = np.array([
+    [0.04, 0.02, 0.01, 0.015],
+    [0.02, 0.09, 0.03, 0.04],
+    [0.01, 0.03, 0.025, 0.02],
+    [0.015, 0.04, 0.02, 0.06]
+])
+
+def portfolio_variance(w):
+    return w.T @ cov_matrix @ w
+
+def neg_return(w):
+    return -w @ returns
+
+# Constraints: sum weights = 1, weights >= 0, expected return >= 0.10
+cons = (
+    {'type': 'eq', 'fun': lambda w: np.sum(w) - 1},
+    {'type': 'ineq', 'fun': lambda w: w @ returns - 0.10}
+)
+
+bounds = Bounds(0, 1)
+w0 = np.ones(n_assets) / n_assets
+
+result = minimize(portfolio_variance, w0, method='SLSQP', bounds=bounds, constraints=cons)
+
+print("Optimal weights:", result.x)
+print("Portfolio variance (risk):", result.fun)
+print("Expected return:", result.x @ returns)
+```
+
+## 5.3 Quadratic Programming with PuLP (for linear constraints + quadratic objective)
+
+Note: Standard PuLP is linear only. For true QP we often use SciPy or switch to CVXPY/Pyomo in advanced chapters.
+
+```{python}
+print("For full QP support beyond linear, consider CVXPY or Pyomo (covered in later chapters).")
+```
+
+## 5.4 Nonlinear Example: Economic Order Quantity (EOQ) with Nonlinear Holding Cost
+
+Classic inventory model with nonlinear total cost.
+
+```{python}
+def eoq_total_cost(Q, D=1000, S=100, H=2):
+    return (D / Q) * S + (Q / 2) * H   # classic EOQ
+
+# Optimize EOQ
+result_eoq = minimize(lambda Q: eoq_total_cost(Q[0]), [100], bounds=[(1, None)])
+print("Optimal order quantity Q*:", result_eoq.x[0])
+print("Minimum total cost:", result_eoq.fun)
+```
+
+## 5.5 Key Takeaways
+
+- Use **SciPy.optimize.minimize** for general nonlinear problems.
+- For convex quadratic problems with linear constraints, SciPy or CVXPY are excellent.
+- True Mixed-Integer Nonlinear Programs (MINLP) require specialized solvers (Bonmin, Couenne, or commercial like Gurobi).
+- Always check convexity for guarantees of global optimality.
+
+**Exercises:**
+1. Add a nonlinear constraint (e.g., maximum volatility) to the portfolio example.
+2. Implement the geometric programming version of a production planning problem.
+3. Compare local solver (SLSQP) vs global methods on a multimodal function.
+
+In the next chapter we explore **Hybrid OR-ML Approaches**.
 

@@ -50,3 +50,12 @@ Thumbs.db
 
 /.quarto/
 **/*.quarto_ipynb
+_book/
+.quarto/
+*.html
+*.pdf
+__pycache__/
+*.pyc
+.DS_Store
+or-ml-ebook-env/
+notebooks/*.ipynb.checkpoints/

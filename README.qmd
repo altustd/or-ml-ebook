@@ -1,44 +1,65 @@
-{
-  "title": "Modern Operations Research with Python",
-  "subtitle": "Optimization • Machine Learning • Data-Driven Decision Making",
-  "description": "This book combines classical Operations Research techniques with modern Machine Learning using Python.",
-  "quick_start": [
-    {
-      "step": 1,
-      "title": "Clone the repository",
-      "command": "git clone https://github.com/altustd/or-ml-ebook.git && cd or-ml-ebook"
-    },
-    {
-      "step": 2,
-      "title": "Activate the environment",
-      "command": "or-ml-ebook-env"
-    },
-    {
-      "step": 3,
-      "title": "Install dependencies",
-      "command": "pip install -r requirements.txt"
-    },
-    {
-      "step": 4,
-      "title": "Render the book",
-      "command": "quarto render"
-    },
-    {
-      "step": 5,
-      "title": "Open the HTML version",
-      "command": "open _book/index.html"
-    }
-  ],
-  "contents": [
-    "Chapter 1: Introduction to Modern Operations Research with Python",
-    "Chapter 2: Linear Programming",
-    "Chapter 3: Network Optimization",
-    "Chapter 4: Integer Programming",
-    "Chapter 5: Nonlinear Optimization",
-    "Chapter 6: Stochastic Optimization",
-    "Chapter 7: Reinforcement Learning in Operations Research"
-  ],
-  "contribute": "Feel free to open issues or submit pull requests. All code examples are designed to be executable.",
-  "license": "MIT License — see the LICENSE file for details.",
-  "built_with": "Quarto"
-}
+---
+title: Modern Operations Research with Python
+jupyter:
+  kernelspec:
+    display_name: Python (or-ml-ebook-env)
+    language: python
+    name: or-ml-ebook-env
+---
+
+
+**Optimization • Machine Learning • Data-Driven Decision Making**
+
+A practical eBook combining classical Operations Research techniques with modern Machine Learning approaches using Python and Quarto.
+
+
+## Current Book Structure
+
+- **Chapter 1**: Introduction  
+- **Chapter 2**: Linear Programming  
+- **Chapter 3**: Network Optimization  
+- **Chapter 4**: Integer Programming  
+- **Chapter 5**: Nonlinear Optimization  
+- **Chapter 6**: Stochastic Programming ← **Current focus**  
+- **Chapter 7**: Hybrid OR-ML Approaches  
+- **Chapter 8+**: Reinforcement Learning, Case Studies, etc.
+
+## Technologies Used
+
+- **Quarto** — Book publishing framework
+- **Python 3.12** (via `or-ml-ebook-env`)
+- **PuLP + GLPK** — Optimization
+- **SciPy** — Nonlinear optimization
+- **scikit-learn** — Machine Learning
+- **Jupyter Notebooks** — Interactive development
+
+## Quick Start
+
+```bash
+cd /Users/troyaltus/data_projects/or-ml-ebook
+or-ml-ebook-env
+quarto render --to html
+quarto preview
+```
+
+## Development Workflow
+
+1. Experiment in `notebooks/` using `.ipynb` files
+2. Convert to clean chapters using:
+   ```bash
+   quarto convert notebooks/XX-name.ipynb --output book/XX-name.qmd
+   ```
+3. Polish the `.qmd` file
+4. Update `_quarto.yml`
+5. Test rendering and push to GitHub
+
+## Repository
+
+GitHub: [https://github.com/altustd/or-ml-ebook](https://github.com/altustd/or-ml-ebook)
+
+---
+
+**Work in Progress** — This eBook is actively being developed.
+
+Last updated: April 2026
+
