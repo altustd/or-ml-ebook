@@ -1,0 +1,222 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Modern Operations Research with Python",
+    "section": "",
+    "text": "1 Welcome\nThis book explores the powerful combination of classical Operations Research and modern Machine Learning using Python.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Modern Operations Research with Python</span>"
+    ]
+  },
+  {
+    "objectID": "index.html#book-structure",
+    "href": "index.html#book-structure",
+    "title": "Modern Operations Research with Python",
+    "section": "1.1 Book Structure",
+    "text": "1.1 Book Structure\n\nChapter 1: Introduction to Modern Operations Research with Python\nChapter 2: Linear Programming\nChapter 3: Network Optimization\nChapter 4: Integer Programming\nChapter 5: Nonlinear Optimization\n\nAll chapters contain executable Python code examples.\n\n\n\n\n\n\nTip\n\n\n\nActivate the environment with or-ml-ebook-env before rendering.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Modern Operations Research with Python</span>"
+    ]
+  },
+  {
+    "objectID": "book/01-introduction.html",
+    "href": "book/01-introduction.html",
+    "title": "2  Introduction to Modern Operations Research with Python",
+    "section": "",
+    "text": "2.1 What is Operations Research?\nOperations Research (OR) is the discipline of applying advanced analytical methods to help make better decisions.\nOperations Research combines mathematics, statistics, modeling, and algorithms to solve complex decision-making problems in business, logistics, healthcare, manufacturing, and many other domains.\nCommon OR problems include: - Resource allocation and scheduling - Supply chain and logistics optimization - Portfolio and financial optimization - Facility location and vehicle routing - Production planning and inventory management",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Introduction to Modern Operations Research with Python</span>"
+    ]
+  },
+  {
+    "objectID": "book/01-introduction.html#the-convergence-of-or-and-machine-learning",
+    "href": "book/01-introduction.html#the-convergence-of-or-and-machine-learning",
+    "title": "2  Introduction to Modern Operations Research with Python",
+    "section": "2.2 The Convergence of OR and Machine Learning",
+    "text": "2.2 The Convergence of OR and Machine Learning\nModern decision-making benefits greatly from combining classical Operations Research with Machine Learning:\n\nMachine Learning excels at prediction, pattern recognition, and handling large, messy data.\nOperations Research provides rigorous optimization frameworks and decision-making under constraints.\nTogether, they create scalable, intelligent, and data-driven decision systems.",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Introduction to Modern Operations Research with Python</span>"
+    ]
+  },
+  {
+    "objectID": "book/01-introduction.html#why-python",
+    "href": "book/01-introduction.html#why-python",
+    "title": "2  Introduction to Modern Operations Research with Python",
+    "section": "2.3 Why Python?",
+    "text": "2.3 Why Python?\nPython has become the language of choice for this interdisciplinary field because of its rich ecosystem:\n\nOptimization: PuLP, SciPy, OR-Tools, CVXPY\nMachine Learning: scikit-learn, PyTorch, TensorFlow, XGBoost\nData Analysis: pandas, NumPy\nVisualization: Matplotlib, Plotly, Seaborn\nGraph Algorithms: NetworkX",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Introduction to Modern Operations Research with Python</span>"
+    ]
+  },
+  {
+    "objectID": "book/01-introduction.html#structure-of-this-book",
+    "href": "book/01-introduction.html#structure-of-this-book",
+    "title": "2  Introduction to Modern Operations Research with Python",
+    "section": "2.4 Structure of This Book",
+    "text": "2.4 Structure of This Book\nThis book is organized into the following parts:\n\nFoundations: Linear Programming, Network Optimization, Integer Programming\nAdvanced Optimization: Nonlinear, Stochastic, and Robust methods\nMachine Learning Integration: Supervised, unsupervised, and reinforcement learning applied to OR\nHybrid Approaches: Real-world case studies combining OR and ML",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Introduction to Modern Operations Research with Python</span>"
+    ]
+  },
+  {
+    "objectID": "book/01-introduction.html#who-should-read-this-book",
+    "href": "book/01-introduction.html#who-should-read-this-book",
+    "title": "2  Introduction to Modern Operations Research with Python",
+    "section": "2.5 Who Should Read This Book?",
+    "text": "2.5 Who Should Read This Book?\n\nOperations Research practitioners who want to incorporate modern ML techniques\nData scientists and ML engineers looking to add optimization skills\nStudents and researchers in industrial engineering, management science, and applied AI\nDevelopers building intelligent decision-support systems",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Introduction to Modern Operations Research with Python</span>"
+    ]
+  },
+  {
+    "objectID": "book/01-introduction.html#next-steps",
+    "href": "book/01-introduction.html#next-steps",
+    "title": "2  Introduction to Modern Operations Research with Python",
+    "section": "2.6 Next Steps",
+    "text": "2.6 Next Steps\nIn the next chapter, we begin with one of the most fundamental tools in Operations Research: Linear Programming.",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Introduction to Modern Operations Research with Python</span>"
+    ]
+  },
+  {
+    "objectID": "book/02-linear-programming.html",
+    "href": "book/02-linear-programming.html",
+    "title": "3  Chapter 02: Linear Programming",
+    "section": "",
+    "text": "3.1 Classic Example: Transportation Problem\nLinear Programming (LP) is one of the most important techniques in Operations Research.\nA company has two factories (F1 and F2) and three warehouses (W1, W2, W3). Goal: Minimize total shipping cost while meeting supply and demand.\nCode\nimport numpy as np\nfrom scipy.optimize import linprog\n\nprint(\"Transportation Problem Solution\")\nprint(\"=\" * 60)\n\n# Cost coefficients: F1W1, F1W2, F1W3, F2W1, F2W2, F2W3\nc = np.array([5, 8, 4, 7, 6, 9])\n\n# Inequality constraints (A_ub x &lt;= b_ub)\nA_ub = np.array([\n    [1, 1, 1, 0, 0, 0],   # F1 supply &lt;= 100\n    [0, 0, 0, 1, 1, 1]    # F2 supply &lt;= 150\n])\nb_ub = np.array([100, 150])\n\n# Demand constraints (converted to &lt;= form)\ndemand_A = np.array([\n    [-1, 0, 0, -1, 0, 0],   # W1 demand &gt;= 80\n    [ 0,-1, 0,  0,-1, 0],   # W2 demand &gt;= 120\n    [ 0, 0,-1,  0, 0,-1]    # W3 demand &gt;= 50\n])\n\nA_ub = np.vstack([A_ub, demand_A])\nb_ub = np.append(b_ub, [-80, -120, -50])\n\n# Solve the linear program\nresult = linprog(c, A_ub=A_ub, b_ub=b_ub, bounds=(0, None), method='highs')\n\nif result.success:\n    print(f\"Total Transportation Cost: ${result.fun:.2f}\\n\")\n    \n    # Reshape solution into 2 factories x 3 warehouses\n    shipments = result.x.reshape(2, 3)\n    \n    print(\"Optimal Shipping Plan:\")\n    print(\"From \\\\ To   W1   W2   W3\")\n    print(\"-\" * 35)\n    for i, f in enumerate([\"F1\", \"F2\"]):\n        row = [f\"{shipments[i,j]:.0f}\" for j in range(3)]\n        print(f\"{f:&lt;8} {row[0]:&gt;3}  {row[1]:&gt;3}  {row[2]:&gt;3}\")\nelse:\n    print(\"Solver failed to find an optimal solution.\")\n\n\nTransportation Problem Solution\n============================================================\nTotal Transportation Cost: $1380.00\n\nOptimal Shipping Plan:\nFrom \\ To   W1   W2   W3\n-----------------------------------\nF1        50    0   50\nF2        30  120    0",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Chapter 02: Linear Programming</span>"
+    ]
+  },
+  {
+    "objectID": "book/02-linear-programming.html#key-takeaways",
+    "href": "book/02-linear-programming.html#key-takeaways",
+    "title": "3  Chapter 02: Linear Programming",
+    "section": "3.2 Key Takeaways",
+    "text": "3.2 Key Takeaways\n\nLinear Programming is highly effective for allocation and logistics problems.\nscipy.optimize.linprog with the highs method is reliable and easy to use.\nAlways check result.success to ensure the solver found a valid solution.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Chapter 02: Linear Programming</span>"
+    ]
+  },
+  {
+    "objectID": "book/03-network-optimization.html",
+    "href": "book/03-network-optimization.html",
+    "title": "4  Chapter 03: Network Optimization",
+    "section": "",
+    "text": "4.1 1. Shortest Path Problem\nNetwork Optimization is a powerful branch of Operations Research that deals with problems involving flows, paths, and connections in graphs.\nFind the cheapest/fastest route from a source to a destination in a network.\nCode\nimport networkx as nx\nimport matplotlib.pyplot as plt\n\n# Create a simple directed graph\nG = nx.DiGraph()\n\n# Add edges with weights (costs)\nedges = [\n    ('A', 'B', 4),\n    ('A', 'C', 2),\n    ('B', 'D', 5),\n    ('C', 'D', 1),\n    ('C', 'E', 8),\n    ('D', 'E', 3)\n]\n\nfor u, v, w in edges:\n    G.add_edge(u, v, weight=w)\n\n# Find shortest path from A to E\nshortest_path = nx.shortest_path(G, 'A', 'E', weight='weight')\nshortest_length = nx.shortest_path_length(G, 'A', 'E', weight='weight')\n\nprint(f\"Shortest path from A to E: {' → '.join(shortest_path)}\")\nprint(f\"Total cost: {shortest_length}\")\n\n# Optional: Visualize\npos = nx.spring_layout(G)\nnx.draw(G, pos, with_labels=True, node_color='lightblue', node_size=800, font_size=12)\nedge_labels = nx.get_edge_attributes(G, 'weight')\nnx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)\nplt.title(\"Network Graph\")\nplt.show()\n\n\nShortest path from A to E: A → C → D → E\nTotal cost: 6",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Chapter 03: Network Optimization</span>"
+    ]
+  },
+  {
+    "objectID": "book/03-network-optimization.html#maximum-flow-problem",
+    "href": "book/03-network-optimization.html#maximum-flow-problem",
+    "title": "4  Chapter 03: Network Optimization",
+    "section": "4.2 2. Maximum Flow Problem",
+    "text": "4.2 2. Maximum Flow Problem\nHow much flow can we push from source to sink given capacity constraints?\n\n\nCode\n# Maximum Flow Example\nG_flow = nx.DiGraph()\nG_flow.add_edge('S', 'A', capacity=10)\nG_flow.add_edge('S', 'B', capacity=5)\nG_flow.add_edge('A', 'C', capacity=8)\nG_flow.add_edge('B', 'C', capacity=6)\nG_flow.add_edge('A', 'T', capacity=7)\nG_flow.add_edge('C', 'T', capacity=9)\n\nflow_value, flow_dict = nx.maximum_flow(G_flow, 'S', 'T')\n\nprint(f\"Maximum Flow from S to T: {flow_value}\")\nprint(\"Flow breakdown:\")\nfor u in flow_dict:\n    for v in flow_dict[u]:\n        if flow_dict[u][v] &gt; 0:\n            print(f\"  {u} → {v}: {flow_dict[u][v]} units\")\n\n\nMaximum Flow from S to T: 15\nFlow breakdown:\n  S → A: 10 units\n  S → B: 5 units\n  A → C: 3 units\n  A → T: 7 units\n  B → C: 5 units\n  C → T: 8 units",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Chapter 03: Network Optimization</span>"
+    ]
+  },
+  {
+    "objectID": "book/03-network-optimization.html#key-takeaways-from-chapter-03",
+    "href": "book/03-network-optimization.html#key-takeaways-from-chapter-03",
+    "title": "4  Chapter 03: Network Optimization",
+    "section": "4.3 Key Takeaways from Chapter 03",
+    "text": "4.3 Key Takeaways from Chapter 03\n\nNetworkX makes it easy to model and solve graph problems in Python.\nCommon problems include Shortest Path, Maximum Flow, Minimum Cost Flow, and Assignment.\nThese techniques are widely used in logistics, telecommunications, and supply chain.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Chapter 03: Network Optimization</span>"
+    ]
+  },
+  {
+    "objectID": "book/04-integer-programming.html",
+    "href": "book/04-integer-programming.html",
+    "title": "5  Chapter 04: Integer Programming",
+    "section": "",
+    "text": "5.1 Why Integer Programming?\nInteger Programming (IP) extends Linear Programming by requiring some or all decision variables to be integers (often binary 0 or 1).\nMany real-world decisions are discrete: - Build a factory or not - Assign whole machines or people - Choose yes/no options\nStandard Linear Programming may give fractional solutions that are not practical.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Chapter 04: Integer Programming</span>"
+    ]
+  },
+  {
+    "objectID": "book/04-integer-programming.html#classic-example-01-knapsack-problem",
+    "href": "book/04-integer-programming.html#classic-example-01-knapsack-problem",
+    "title": "5  Chapter 04: Integer Programming",
+    "section": "5.2 Classic Example: 0/1 Knapsack Problem",
+    "text": "5.2 Classic Example: 0/1 Knapsack Problem\nA hiker wants to maximize the total value of items carried in a knapsack without exceeding the weight limit.\n\n\nCode\nimport numpy as np\nfrom scipy.optimize import linprog\n\nprint(\"0/1 Knapsack Problem Solution\")\nprint(\"=\" * 50)\n\n# Items: name, value, weight\nitems = [\"Tent\", \"Food\", \"Water\", \"Camera\", \"Map\"]\nvalues = np.array([10, 8, 7, 6, 3])\nweights = np.array([5, 3, 4, 2, 1])\ncapacity = 10\n\n# Objective: maximize value → minimize negative value\nc = -values\n\n# Weight constraint\nA_ub = weights.reshape(1, -1)\nb_ub = np.array([capacity])\n\n# Bounds: each item is 0 or 1 (relaxed to continuous for simplicity)\nbounds = [(0, 1) for _ in items]\n\n# Solve\nresult = linprog(c, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method='highs')\n\nif result.success:\n    selected = np.round(result.x).astype(int)\n    total_value = np.dot(selected, values)\n    total_weight = np.dot(selected, weights)\n    \n    print(f\"Total Value: {total_value}\")\n    print(f\"Total Weight: {total_weight} / {capacity}\\n\")\n    \n    print(\"Items to take:\")\n    for i, item in enumerate(items):\n        if selected[i] == 1:\n            print(f\"  ✓ {item} (Value: {values[i]}, Weight: {weights[i]})\")\nelse:\n    print(\"Solver failed\")\n\n\n0/1 Knapsack Problem Solution\n==================================================\nTotal Value: 27\nTotal Weight: 11 / 10\n\nItems to take:\n  ✓ Tent (Value: 10, Weight: 5)\n  ✓ Food (Value: 8, Weight: 3)\n  ✓ Camera (Value: 6, Weight: 2)\n  ✓ Map (Value: 3, Weight: 1)",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Chapter 04: Integer Programming</span>"
+    ]
+  },
+  {
+    "objectID": "book/04-integer-programming.html#key-concepts",
+    "href": "book/04-integer-programming.html#key-concepts",
+    "title": "5  Chapter 04: Integer Programming",
+    "section": "5.3 Key Concepts",
+    "text": "5.3 Key Concepts\n\nDecision variables are binary (0 or 1) or integer.\nProblems are generally NP-hard — harder than pure Linear Programming.\nModern solvers use Branch-and-Bound combined with cutting planes.\nIn practice, PuLP + CBC or Gurobi are commonly used for exact solutions.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Chapter 04: Integer Programming</span>"
+    ]
+  },
+  {
+    "objectID": "book/04-integer-programming.html#next-steps",
+    "href": "book/04-integer-programming.html#next-steps",
+    "title": "5  Chapter 04: Integer Programming",
+    "section": "5.4 Next Steps",
+    "text": "5.4 Next Steps\nIn later chapters we will explore Mixed-Integer Programming and real-world applications such as scheduling and facility location.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Chapter 04: Integer Programming</span>"
+    ]
+  },
+  {
+    "objectID": "book/05-nonlinear-optimization.html",
+    "href": "book/05-nonlinear-optimization.html",
+    "title": "6  Chapter 05: Nonlinear Optimization",
+    "section": "",
+    "text": "6.1 Why Nonlinear Optimization Matters\nNonlinear Optimization deals with problems where the objective function and/or constraints are nonlinear.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Chapter 05: Nonlinear Optimization</span>"
+    ]
+  },
+  {
+    "objectID": "book/05-nonlinear-optimization.html#why-nonlinear-optimization-matters",
+    "href": "book/05-nonlinear-optimization.html#why-nonlinear-optimization-matters",
+    "title": "6  Chapter 05: Nonlinear Optimization",
+    "section": "",
+    "text": "Many real-world problems are nonlinear (cost curves, physical laws, machine learning loss functions, etc.)\nLinear Programming is often an approximation — Nonlinear gives more accurate models.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Chapter 05: Nonlinear Optimization</span>"
+    ]
+  },
+  {
+    "objectID": "book/05-nonlinear-optimization.html#classic-example-portfolio-optimization-with-risk",
+    "href": "book/05-nonlinear-optimization.html#classic-example-portfolio-optimization-with-risk",
+    "title": "6  Chapter 05: Nonlinear Optimization",
+    "section": "6.2 Classic Example: Portfolio Optimization with Risk",
+    "text": "6.2 Classic Example: Portfolio Optimization with Risk\nAn investor wants to maximize expected return while keeping risk (variance) below a threshold.\n\n\nCode\nimport numpy as np\nfrom scipy.optimize import minimize\n\n# Assets: Expected returns and covariance matrix\nassets = ['Stock A', 'Stock B', 'Stock C']\nexpected_returns = np.array([0.12, 0.18, 0.10])\n\n# Covariance matrix (risk)\ncov_matrix = np.array([\n    [0.04, 0.02, 0.01],\n    [0.02, 0.09, 0.03],\n    [0.01, 0.03, 0.025]\n])\n\ndef portfolio_variance(weights):\n    return weights.T @ cov_matrix @ weights\n\ndef negative_return(weights):\n    return -weights @ expected_returns\n\n# Constraints: weights sum to 1, each between 0 and 1\nconstraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})\nbounds = [(0, 1) for _ in assets]\n\n# Initial guess\ninitial_weights = np.array([0.333, 0.333, 0.334])\n\n# Optimize (minimize risk for a given return, or maximize return for given risk)\nresult = minimize(portfolio_variance, initial_weights, \n                  method='SLSQP', bounds=bounds, constraints=constraints)\n\nprint(\"Optimal Portfolio Weights:\")\nfor asset, weight in zip(assets, result.x):\n    print(f\"  {asset}: {weight:.4f} ({weight*100:.1f}%)\")\n\nprint(f\"\\nPortfolio Variance (Risk): {result.fun:.4f}\")\nprint(f\"Expected Return: {result.x @ expected_returns:.4f} ({result.x @ expected_returns*100:.1f}%)\")\n\n\nOptimal Portfolio Weights:\n  Stock A: 0.3333 (33.3%)\n  Stock B: 0.0000 (0.0%)\n  Stock C: 0.6667 (66.7%)\n\nPortfolio Variance (Risk): 0.0200\nExpected Return: 0.1067 (10.7%)",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Chapter 05: Nonlinear Optimization</span>"
+    ]
+  },
+  {
+    "objectID": "book/05-nonlinear-optimization.html#key-concepts-in-nonlinear-optimization",
+    "href": "book/05-nonlinear-optimization.html#key-concepts-in-nonlinear-optimization",
+    "title": "6  Chapter 05: Nonlinear Optimization",
+    "section": "6.3 Key Concepts in Nonlinear Optimization",
+    "text": "6.3 Key Concepts in Nonlinear Optimization\n\nObjective Function can be quadratic, exponential, logarithmic, etc.\nConstraints can also be nonlinear.\nCommon methods: Gradient Descent, Newton’s method, SLSQP, Interior Point methods.\nChallenges: Local vs global optima, non-convexity, computational cost.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Chapter 05: Nonlinear Optimization</span>"
+    ]
+  },
+  {
+    "objectID": "book/05-nonlinear-optimization.html#when-to-use-nonlinear-optimization",
+    "href": "book/05-nonlinear-optimization.html#when-to-use-nonlinear-optimization",
+    "title": "6  Chapter 05: Nonlinear Optimization",
+    "section": "6.4 When to Use Nonlinear Optimization",
+    "text": "6.4 When to Use Nonlinear Optimization\n\nPortfolio optimization (risk-return tradeoff)\nMachine learning model training (minimizing loss)\nEngineering design (minimizing weight or cost with nonlinear physics)\nPricing and revenue management",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Chapter 05: Nonlinear Optimization</span>"
+    ]
+  }
+]

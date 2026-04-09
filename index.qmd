@@ -4,17 +4,18 @@ title: "Modern Operations Research with Python"
 
 # Welcome
 
-This ebook bridges classical Operations Research techniques with modern Machine Learning methods using Python.
+This book explores the powerful combination of classical **Operations Research** and modern **Machine Learning** using Python.
 
-## What You'll Learn
+## Book Structure
 
-- Linear, integer, and nonlinear optimization with PuLP and SciPy
-- Network flows and graph algorithms
-- Integration of supervised/unsupervised ML with optimization
-- Real-world case studies in logistics, scheduling, and resource allocation
+- **Chapter 1**: Introduction to Modern Operations Research with Python
+- **Chapter 2**: Linear Programming
+- **Chapter 3**: Network Optimization
+- **Chapter 4**: Integer Programming
+- **Chapter 5**: Nonlinear Optimization
 
-All code is executable and reproducible.
+All chapters contain executable Python code examples.
 
 :::{.callout-tip}
-Use the sidebar to navigate chapters. Code cells can be run directly in the HTML version.
+Activate the environment with `or-ml-ebook-env` before rendering.
 :::

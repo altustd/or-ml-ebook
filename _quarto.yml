@@ -9,48 +9,25 @@ book:
   date: "2026"
   chapters:
     - index.qmd
-    - part: "Foundations"
-      chapters:
-        - book/01-introduction.qmd
-        - book/02-linear-programming.qmd
-        - book/03-network-optimization.qmd
-    - part: "Advanced Optimization"
-      chapters:
-        - book/04-integer-programming.qmd
-        - book/05-nonlinear-optimization.qmd
-        - book/06-stochastic-optimization.qmd
-    - part: "Machine Learning Integration"
-      chapters:
-        - book/07-supervised-learning.qmd
-        - book/08-unsupervised-learning.qmd
-        - book/09-reinforcement-learning.qmd
-    - part: "Hybrid Approaches & Applications"
-      chapters:
-        - book/10-hybrid-or-ml.qmd
-        - book/11-case-studies.qmd
-  appendices:
-    - appendices/a-python-environment.qmd
-    - appendices/b-mathematical-review.qmd
-    - appendices/c-solver-comparison.qmd
+    - book/01-introduction.qmd
+    - book/02-linear-programming.qmd
+    - book/03-network-optimization.qmd
+    - book/04-integer-programming.qmd
+    - book/05-nonlinear-optimization.qmd
 
 format:
   html:
     theme: cosmo
-    css: styles.css
     toc: true
     number-sections: true
     code-fold: true
-    smooth-scroll: true
   pdf:
     documentclass: scrbook
-    papersize: letter
-    toc: true
     number-sections: true
     latex-engine: xelatex
-    keep-tex: true
 
-bibliography: references.bib
+jupyter: or-ml-ebook-env
 
 execute:
-  echo: false
+  echo: true
   warning: false

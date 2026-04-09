@@ -1,12 +1,24 @@
+# Core data science and numerical libraries
 numpy
 pandas
 scipy
 matplotlib
 seaborn
 plotly
+
+# Optimization
 pulp
 scikit-learn
 networkx
-sympy
+
+# Jupyter and Quarto support
 jupyter
-quarto
+ipykernel
+nbconvert
+
+# Optional but useful
+sympy
+statsmodels
+pyyaml
+jupyter
+ipykernel

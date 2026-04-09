@@ -1,0 +1,73 @@
+---
+title: 'Chapter 05: Nonlinear Optimization'
+jupyter: or-ml-ebook-env
+---
+
+
+Nonlinear Optimization deals with problems where the objective function and/or constraints are **nonlinear**.
+
+
+## Why Nonlinear Optimization Matters
+
+- Many real-world problems are nonlinear (cost curves, physical laws, machine learning loss functions, etc.)
+- Linear Programming is often an approximation — Nonlinear gives more accurate models.
+
+## Classic Example: Portfolio Optimization with Risk
+
+An investor wants to maximize expected return while keeping risk (variance) below a threshold.
+
+```{python}
+#| execution: {iopub.execute_input: '2026-04-09T14:30:42.435814Z', iopub.status.busy: '2026-04-09T14:30:42.435597Z', iopub.status.idle: '2026-04-09T14:30:42.640021Z', shell.execute_reply: '2026-04-09T14:30:42.639627Z'}
+import numpy as np
+from scipy.optimize import minimize
+
+# Assets: Expected returns and covariance matrix
+assets = ['Stock A', 'Stock B', 'Stock C']
+expected_returns = np.array([0.12, 0.18, 0.10])
+
+# Covariance matrix (risk)
+cov_matrix = np.array([
+    [0.04, 0.02, 0.01],
+    [0.02, 0.09, 0.03],
+    [0.01, 0.03, 0.025]
+])
+
+def portfolio_variance(weights):
+    return weights.T @ cov_matrix @ weights
+
+def negative_return(weights):
+    return -weights @ expected_returns
+
+# Constraints: weights sum to 1, each between 0 and 1
+constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
+bounds = [(0, 1) for _ in assets]
+
+# Initial guess
+initial_weights = np.array([0.333, 0.333, 0.334])
+
+# Optimize (minimize risk for a given return, or maximize return for given risk)
+result = minimize(portfolio_variance, initial_weights, 
+                  method='SLSQP', bounds=bounds, constraints=constraints)
+
+print("Optimal Portfolio Weights:")
+for asset, weight in zip(assets, result.x):
+    print(f"  {asset}: {weight:.4f} ({weight*100:.1f}%)")
+
+print(f"\nPortfolio Variance (Risk): {result.fun:.4f}")
+print(f"Expected Return: {result.x @ expected_returns:.4f} ({result.x @ expected_returns*100:.1f}%)")
+```
+
+## Key Concepts in Nonlinear Optimization
+
+- **Objective Function** can be quadratic, exponential, logarithmic, etc.
+- **Constraints** can also be nonlinear.
+- Common methods: Gradient Descent, Newton's method, SLSQP, Interior Point methods.
+- Challenges: Local vs global optima, non-convexity, computational cost.
+
+## When to Use Nonlinear Optimization
+
+- Portfolio optimization (risk-return tradeoff)
+- Machine learning model training (minimizing loss)
+- Engineering design (minimizing weight or cost with nonlinear physics)
+- Pricing and revenue management
+
