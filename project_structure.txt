@@ -1,0 +1,45 @@
+or-ml-ebook/
+├── .gitignore
+├── _quarto.yml
+├── index.qmd
+├── README.md
+├── LICENSE
+├── requirements.txt
+├── styles.css
+├── project_structure.txt
+│
+├── book/                    # Main Quarto chapters (recommended location)
+│   ├── 01-introduction.qmd
+│   ├── 02-linear-programming.qmd
+│   ├── 03-network-optimization.qmd
+│   ├── 04-integer-programming.qmd
+│   ├── 05-nonlinear-optimization.qmd
+│   ├── 06-stochastic-optimization.qmd
+│   ├── 07-supervised-learning.qmd
+│   ├── 08-unsupervised-learning.qmd
+│   ├── 09-reinforcement-learning.qmd
+│   ├── 10-hybrid-or-ml.qmd
+│   └── 11-case-studies.qmd
+│
+├── notebooks/               # Exploratory Jupyter notebooks
+│   └── exploratory/
+│
+├── data/                    # Sample datasets
+│   └── raw/
+│
+├── code/                    # Reusable Python modules
+│   └── or_ml/
+│       ├── __init__.py
+│       ├── optimization.py
+│       ├── ml_integration.py
+│       └── utils.py
+│
+├── figures/                 # Generated plots and diagrams
+├── outputs/                 # Rendered results
+├── appendices/              # Extra material
+│   ├── a-python-environment.qmd
+│   ├── b-mathematical-review.qmd
+│   └── c-solver-comparison.qmd
+│
+├── examples/                # Standalone runnable scripts
+└── references.bib
