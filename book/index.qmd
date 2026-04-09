@@ -1,0 +1,21 @@
+---
+title: "Modern Operations Research with Python"
+---
+
+# Welcome
+
+This book explores the powerful combination of classical **Operations Research** and modern **Machine Learning** using Python.
+
+## Book Structure
+
+- **Chapter 1**: Introduction to Modern Operations Research with Python
+- **Chapter 2**: Linear Programming
+- **Chapter 3**: Network Optimization
+- **Chapter 4**: Integer Programming
+- **Chapter 5**: Nonlinear Optimization
+
+All chapters contain executable Python code examples.
+
+:::{.callout-tip}
+Activate the environment with `or-ml-ebook-env` before rendering.
+:::

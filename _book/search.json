@@ -4,7 +4,17 @@
     "href": "index.html",
     "title": "Modern Operations Research with Python",
     "section": "",
-    "text": "1 Welcome\nThis book explores the powerful combination of classical Operations Research and modern Machine Learning using Python.",
+    "text": "1 Welcome\nThis book explores the powerful intersection of classical Operations Research and modern Machine Learning using Python.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Modern Operations Research with Python</span>"
+    ]
+  },
+  {
+    "objectID": "index.html#what-youll-learn",
+    "href": "index.html#what-youll-learn",
+    "title": "Modern Operations Research with Python",
+    "section": "1.1 What You’ll Learn",
+    "text": "1.1 What You’ll Learn\n\nCore optimization techniques (Linear, Integer, Nonlinear, Stochastic)\nNetwork flows and graph-based problems\nHow to integrate Machine Learning with traditional OR methods\nPractical applications in logistics, supply chain, finance, and scheduling",
     "crumbs": [
       "<span class='chapter-number'>1</span>  <span class='chapter-title'>Modern Operations Research with Python</span>"
     ]
@@ -13,8 +23,18 @@
     "objectID": "index.html#book-structure",
     "href": "index.html#book-structure",
     "title": "Modern Operations Research with Python",
-    "section": "1.1 Book Structure",
-    "text": "1.1 Book Structure\n\nChapter 1: Introduction to Modern Operations Research with Python\nChapter 2: Linear Programming\nChapter 3: Network Optimization\nChapter 4: Integer Programming\nChapter 5: Nonlinear Optimization\n\nAll chapters contain executable Python code examples.\n\n\n\n\n\n\nTip\n\n\n\nActivate the environment with or-ml-ebook-env before rendering.",
+    "section": "1.2 Book Structure",
+    "text": "1.2 Book Structure\nPart 1: Foundations - Chapter 1: Introduction to Modern Operations Research with Python - Chapter 2: Linear Programming - Chapter 3: Network Optimization\nPart 2: Advanced Optimization - Chapter 4: Integer Programming - Chapter 5: Nonlinear Optimization - Chapter 6: Stochastic Optimization\nPart 3: Machine Learning Integration - Chapter 7: Reinforcement Learning in Operations Research",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Modern Operations Research with Python</span>"
+    ]
+  },
+  {
+    "objectID": "index.html#how-to-use-this-book",
+    "href": "index.html#how-to-use-this-book",
+    "title": "Modern Operations Research with Python",
+    "section": "1.3 How to Use This Book",
+    "text": "1.3 How to Use This Book\nAll chapters include fully executable Python code examples using libraries such as: - scipy, numpy, pandas - pulp, networkx - scikit-learn\nActivate the project environment and run quarto render to build the full book.\n\n\n\n\n\n\nTip\n\n\n\nQuick Start 1. or-ml-ebook-env 2. pip install -r requirements.txt 3. quarto render 4. Open _book/index.html\n\n\n\nHappy exploring!",
     "crumbs": [
       "<span class='chapter-number'>1</span>  <span class='chapter-title'>Modern Operations Research with Python</span>"
     ]

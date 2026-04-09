@@ -1,4 +1,4 @@
-# Core data science and numerical libraries
+# Core scientific computing
 numpy
 pandas
 scipy
@@ -11,14 +11,15 @@ pulp
 scikit-learn
 networkx
 
+# Machine Learning
+xgboost
+
 # Jupyter and Quarto support
 jupyter
 ipykernel
 nbconvert
+pyyaml
 
 # Optional but useful
 sympy
 statsmodels
-pyyaml
-jupyter
-ipykernel
