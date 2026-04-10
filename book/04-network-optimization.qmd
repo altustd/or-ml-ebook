@@ -1,0 +1,134 @@
+# Network Optimization
+
+Network optimization problems involve finding optimal flows, paths, or assignments on graphs. These models are widely used in logistics, supply chain, telecommunications, transportation, and energy systems.
+
+
+```python
+import networkx as nx
+import matplotlib.pyplot as plt
+import pulp
+import numpy as np
+
+np.random.seed(42)
+print("NetworkX version:", nx.__version__)
+print("PuLP version:     ", pulp.__version__)
+```
+
+## Key Analysis Tools in Network Optimization
+
+- **NetworkX**: Provides fast graph algorithms (Dijkstra, maximum flow, min-cost flow, etc.)
+- **PuLP**: Allows formulating network problems as linear or mixed-integer programs for full control and sensitivity analysis
+- **Visualization**: Graph drawing to understand structure and solution
+- **Sensitivity Analysis**: Shadow prices, reduced costs, and what-if scenarios
+- **Solver Comparison**: Open-source (CBC) vs commercial solvers (Gurobi, CPLEX)
+
+## 1. Shortest Path Problem
+
+
+```python
+# Build a small transportation network
+G = nx.DiGraph()
+edges = [
+    ("A", "B", 4), ("A", "C", 2),
+    ("B", "D", 5), ("B", "E", 10),
+    ("C", "D", 3), ("C", "E", 8),
+    ("D", "F", 6),
+    ("E", "F", 2)
+]
+
+for u, v, w in edges:
+    G.add_edge(u, v, weight=w)
+
+# Solve using NetworkX (Dijkstra)
+path = nx.shortest_path(G, "A", "F", weight="weight")
+cost = nx.shortest_path_length(G, "A", "F", weight="weight")
+
+print(f"Shortest path from A to F: {' → '.join(path)}")
+print(f"Minimum cost: {cost}")
+
+# Visualize the network
+pos = nx.spring_layout(G, seed=42)
+nx.draw(G, pos, with_labels=True, node_color="lightblue", node_size=800, font_weight="bold")
+nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, 'weight'))
+plt.title("Network Graph for Shortest Path Problem")
+plt.show()
+```
+
+## 2. Transportation Problem
+
+
+```python
+# Transportation Problem using PuLP
+prob = pulp.LpProblem("Transportation_Problem", pulp.LpMinimize)
+
+sources = ["Factory1", "Factory2"]
+warehouses = ["WH_A", "WH_B", "WH_C"]
+
+supply = {"Factory1": 300, "Factory2": 400}
+demand = {"WH_A": 200, "WH_B": 250, "WH_C": 250}
+
+cost_matrix = {
+    "Factory1": [5, 8, 12],
+    "Factory2": [9, 6, 7]
+}
+
+x = pulp.LpVariable.dicts("ship", [(s, w) for s in sources for w in warehouses], lowBound=0, cat="Continuous")
+
+# Objective
+prob += pulp.lpSum(cost_matrix[s][i] * x[(s, w)] for s in sources for i, w in enumerate(warehouses))
+
+# Constraints
+for s in sources:
+    prob += pulp.lpSum(x[(s, w)] for w in warehouses) <= supply[s]
+
+for i, w in enumerate(warehouses):
+    prob += pulp.lpSum(x[(s, w)] for s in sources) >= demand[w]
+
+prob.solve(pulp.PULP_CBC_CMD(msg=False))
+
+print("Optimal Transportation Plan:")
+for s in sources:
+    for w in warehouses:
+        if pulp.value(x[(s, w)]) > 0.1:
+            print(f"  {s} → {w}: {pulp.value(x[(s, w)]):.0f} units")
+
+print(f"\nTotal transportation cost: ${pulp.value(prob.objective):.2f}")
+```
+
+## 3. Maximum Flow Problem
+
+
+```python
+# Maximum Flow Problem
+flow_G = nx.DiGraph()
+flow_edges = [("S","A",10), ("S","B",15), ("A","C",8), ("A","D",5),
+              ("B","C",12), ("B","D",6), ("C","T",15), ("D","T",10)]
+
+for u, v, cap in flow_edges:
+    flow_G.add_edge(u, v, capacity=cap)
+
+flow_value, flow_dict = nx.maximum_flow(flow_G, "S", "T")
+
+print(f"Maximum Flow from Source to Sink: {flow_value} units")
+```
+
+## Analysis Tools Summary
+
+- **NetworkX** → Fast built-in algorithms for path, flow, and centrality
+- **PuLP + CBC** → Full mathematical modeling with dual values and sensitivity
+- **Visualization** → Understand network structure and solution quality
+- **Solver Options** → CBC (default), GLPK, or commercial solvers for large instances
+
+## Exercises
+
+1. **Formulate Shortest Path as LP**: Rewrite the shortest path problem using PuLP as a linear program. Compare the solution and computation time with NetworkX Dijkstra.
+
+2. **Sensitivity Analysis**: Increase the supply at Factory1 by 50 units. Re-solve the transportation problem and analyze how the optimal shipping plan and total cost change. Compute shadow prices using PuLP.
+
+3. **Assignment Problem**: Model and solve a worker-to-task assignment problem (minimize total cost) using binary variables in PuLP.
+
+4. **Minimum Cost Flow**: Extend the maximum flow example into a minimum cost flow problem with both capacities and costs on edges. Solve using NetworkX `min_cost_flow`.
+
+5. **What-if Scenario**: Add a new warehouse and new shipping costs. Compare the new optimal solution with the original one. Visualize both networks side by side.
+
+6. **Scaling Test**: Increase the number of sources and warehouses to 10 each. Observe how solving time changes and discuss when you might need a commercial solver.

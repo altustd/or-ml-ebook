@@ -1,19 +1,37 @@
 ---
 title: "Modern Operations Research with Python"
+subtitle: "From Mathematical Optimization to Prescriptive Analytics"
+author: "Troy Altus"
+date: today
 ---
 
-# Welcome
+## Welcome
 
-This book explores the powerful intersection of classical **Operations Research** and modern **Machine Learning** using Python.
+This book explores the powerful intersection of **Operations Research** and **Machine Learning** using Python. It bridges traditional optimization techniques with modern data-driven methods to solve complex decision-making problems.
 
-## Contents
+### What You'll Learn
 
-- **Chapter 1**: Introduction
-- **Chapter 2**: Linear Programming
-- **Chapter 3**: Network Optimization
-- **Chapter 4**: Integer Programming
-- **Chapter 5**: Nonlinear Optimization
+- Core optimization techniques: Linear, Integer, Network, and Nonlinear Programming
+- Handling uncertainty with Stochastic Optimization
+- Using supervised and unsupervised learning to support OR decisions
+- Reinforcement Learning and Simulation Optimization
+- Building end-to-end prescriptive analytics pipelines
 
-:::{.callout-tip}
-Activate the environment with `or-ml-ebook-env` and run `quarto render` to build the full book.
-:::
+### Structure
+
+**Part I: Foundations**  
+Linear and integer programming, network flows.
+
+**Part II: Advanced Optimization**  
+Stochastic and nonlinear methods under uncertainty and complexity.
+
+**Part III: Machine Learning for OR**  
+Predictive models that feed into optimization.
+
+**Part IV: Integration & Applications**  
+Simulation, reinforcement learning, and full prescriptive systems.
+
+---
+
+Start with [Chapter 1: Introduction to Operations Research and Machine Learning](book/01-introduction-to-or-ml.qmd).
+

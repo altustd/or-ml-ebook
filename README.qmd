@@ -1,65 +1,81 @@
 ---
 title: Modern Operations Research with Python
-jupyter:
-  kernelspec:
-    display_name: Python (or-ml-ebook-env)
-    language: python
-    name: or-ml-ebook-env
+jupyter: python3
 ---
 
 
-**Optimization • Machine Learning • Data-Driven Decision Making**
+**Optimization · Machine Learning · Simulation**
 
-A practical eBook combining classical Operations Research techniques with modern Machine Learning approaches using Python and Quarto.
+Author: Troy Altus  
+Last Updated: April 2026
 
 
-## Current Book Structure
+## Project Overview
 
-- **Chapter 1**: Introduction  
-- **Chapter 2**: Linear Programming  
-- **Chapter 3**: Network Optimization  
-- **Chapter 4**: Integer Programming  
-- **Chapter 5**: Nonlinear Optimization  
-- **Chapter 6**: Stochastic Programming ← **Current focus**  
-- **Chapter 7**: Hybrid OR-ML Approaches  
-- **Chapter 8+**: Reinforcement Learning, Case Studies, etc.
+This repository contains a comprehensive ebook-style resource that bridges **classical Operations Research** with **modern Machine Learning** using Python.
 
-## Technologies Used
+It covers foundational optimization techniques through advanced topics including stochastic programming, nonlinear optimization, and prescriptive analytics.
 
-- **Quarto** — Book publishing framework
-- **Python 3.12** (via `or-ml-ebook-env`)
-- **PuLP + GLPK** — Optimization
-- **SciPy** — Nonlinear optimization
-- **scikit-learn** — Machine Learning
-- **Jupyter Notebooks** — Interactive development
+## Project Structure
+
+```bash
+or-ml-ebook/
+├── book/                          # Final Quarto chapters (.qmd)
+│   ├── 01-introduction-to-or-ml.qmd
+│   ├── 02-linear-programming.qmd
+│   ├── 03-integer-programming.qmd
+│   ├── 04-network-optimization.qmd
+│   ├── 05-stochastic-optimization.qmd
+│   ├── 06-nonlinear-optimization.qmd
+│   └── ...
+├── notebooks/                     # Source Jupyter notebooks (.ipynb)
+│   ├── 01-introduction-to-or-ml.ipynb
+│   ├── 02-linear-programming.ipynb
+│   ├── 03-integer-programming.ipynb
+│   ├── 04-network-optimization.ipynb
+│   ├── 05-stochastic-optimization.ipynb
+│   ├── 06-nonlinear-optimization.ipynb
+│   └── ...
+├── _quarto.yml                    # Quarto book configuration
+├── index.qmd                      # Book homepage
+├── references.bib
+├── requirements.txt
+├── convert_all_notebooks.py
+├── test_all_chapters.py
+└── _book/                         # Rendered HTML output (generated)
+```
 
 ## Quick Start
 
 ```bash
-cd /Users/troyaltus/data_projects/or-ml-ebook
-or-ml-ebook-env
-quarto render --to html
+# Activate environment
+source or-ml-ebook-env/bin/activate
+
+# Render the full book
+quarto render
+
+# Open in browser
+open _book/index.html
+
+# Live preview (recommended)
 quarto preview
 ```
 
-## Development Workflow
+## Current Progress
 
-1. Experiment in `notebooks/` using `.ipynb` files
-2. Convert to clean chapters using:
-   ```bash
-   quarto convert notebooks/XX-name.ipynb --output book/XX-name.qmd
-   ```
-3. Polish the `.qmd` file
-4. Update `_quarto.yml`
-5. Test rendering and push to GitHub
+- **Completed**:
+  - Chapter 1: Introduction to OR and ML
+  - Chapter 2: Linear Programming
+  - Chapter 3: Integer Programming
+  - Chapter 4: Network Optimization
+  - Chapter 5: Stochastic Optimization
+  - Chapter 6: Nonlinear Optimization
 
-## Repository
-
-GitHub: [https://github.com/altustd/or-ml-ebook](https://github.com/altustd/or-ml-ebook)
+- **In Progress**: Supervised Learning, Reinforcement Learning, Simulation Optimization, and Prescriptive Analytics
 
 ---
 
-**Work in Progress** — This eBook is actively being developed.
+**Happy Optimizing!**
 
-Last updated: April 2026
+Built with Python, PuLP, SciPy, scikit-learn, and Quarto.
 

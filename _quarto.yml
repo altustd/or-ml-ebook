@@ -1,35 +1,49 @@
 project:
   type: book
-  output-dir: _book
 
 book:
   title: "Modern Operations Research with Python"
-  subtitle: "Optimization • Machine Learning • Data-Driven Decision Making"
-  author: "altustd"
-  date: "2026"
+  subtitle: "Combining Optimization, Machine Learning, and Simulation"
+  author: "Troy Altus"
+  date: today
   chapters:
     - index.qmd
-    - book/01-introduction.qmd
-    - book/02-linear-programming.qmd
-    - book/03-network-optimization.qmd
-    - book/04-integer-programming.qmd
-    - book/05-nonlinear-optimization.qmd
-    - book/06-stochastic-programming.qmd      # Stochastic Programming
-    - book/07-hybrid-or-ml.qmd                # Hybrid OR-ML (if ready)
+    - part: "Foundations"
+      chapters:
+        - book/01-introduction-to-or-ml.qmd
+        - book/02-linear-programming.qmd
+        - book/03-integer-programming.qmd
+        - book/04-network-optimization.qmd
+    - part: "Advanced Optimization"
+      chapters:
+        - book/05-stochastic-optimization.qmd
+        - book/06-nonlinear-optimization.qmd
+    - part: "Machine Learning for OR"
+      chapters:
+        - book/07-supervised-learning.qmd
+        - book/08-unsupervised-learning.qmd
+        - book/09-reinforcement-learning.qmd
+    - part: "Integration & Applications"
+      chapters:
+        - book/10-simulation-optimization.qmd
+        - book/11-prescriptive-analytics.qmd
+
+  appendices:
+    - book/references.qmd
+
+bibliography: references.bib
 
 format:
   html:
     theme: cosmo
+    code-fold: true
+    code-tools: true
     toc: true
     number-sections: true
-    code-fold: true
+    smooth-scroll: true
+
   pdf:
     documentclass: scrbook
     number-sections: true
-    latex-engine: xelatex
 
-jupyter: or-ml-ebook-env
-
-execute:
-  echo: true
-  warning: false
+jupyter: python3

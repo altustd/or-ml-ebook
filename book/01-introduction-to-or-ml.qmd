@@ -1,0 +1,114 @@
+# Introduction to Operations Research and Machine Learning
+
+Modern Operations Research meets Machine Learning: Building intelligent decision-making systems with Python.
+
+
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+sns.set(style="whitegrid")
+np.random.seed(42)
+
+print("Environment ready for OR + ML exploration")
+```
+
+## What is Operations Research?
+
+
+```python
+print("""Operations Research (OR) is the discipline of applying advanced analytical methods to help make better decisions.
+
+Core OR techniques include:
+- Linear and Integer Programming
+- Stochastic Optimization
+- Simulation
+- Queueing Theory
+- Network Optimization
+""")
+```
+
+## Why Combine OR with Machine Learning?
+
+
+```python
+comparison = pd.DataFrame({
+    'Aspect': ['Traditional OR', 'Machine Learning', 'OR + ML'],
+    'Strength': [
+        'Optimal decisions under known parameters',
+        'Excellent at pattern recognition and prediction',
+        'Predict uncertain parameters → Optimize decisions'
+    ],
+    'Limitation': [
+        'Struggles with high uncertainty and complex data',
+        'Often lacks optimality guarantees',
+        'Requires careful integration'
+    ]
+})
+
+display(comparison)
+```
+
+## Simple Linear Programming Example (Classic OR)
+
+
+```python
+import pulp
+
+# Production planning problem
+prob = pulp.LpProblem("Production_Planning", pulp.LpMaximize)
+
+# Variables
+x1 = pulp.LpVariable("Product_A", lowBound=0, cat='Integer')
+x2 = pulp.LpVariable("Product_B", lowBound=0, cat='Integer')
+
+# Objective: Maximize profit
+prob += 25 * x1 + 30 * x2, "Total_Profit"
+
+# Constraints
+prob += 3 * x1 + 4 * x2 <= 240, "Machine_Hours"
+prob += 2 * x1 + 1 * x2 <= 100, "Labor_Hours"
+
+prob.solve(pulp.PULP_CBC_CMD(msg=False))
+
+print(f"Optimal Production:")
+print(f"Product A: {pulp.value(x1):.0f} units")
+print(f"Product B: {pulp.value(x2):.0f} units")
+print(f"Maximum Profit: ${pulp.value(prob.objective):.2f}")
+```
+
+## Machine Learning Component: Demand Prediction
+
+
+```python
+# Simple synthetic demand prediction example
+weeks = np.arange(1, 53)
+demand = 120 + 15 * np.sin(weeks * np.pi / 12) + np.random.normal(0, 12, 52)
+
+plt.figure(figsize=(10, 5))
+plt.plot(weeks, demand, 'o-', label='Weekly Demand')
+plt.axhline(y=120, color='red', linestyle='--', label='Average Demand')
+plt.title('Stochastic Demand Pattern')
+plt.xlabel('Week')
+plt.ylabel('Demand (units)')
+plt.legend()
+plt.show()
+
+print(f"Average demand: {demand.mean():.1f} units")
+print(f"Demand variability (std): {demand.std():.1f} units")
+```
+
+## Course Overview
+
+This book covers:
+
+- Mathematical optimization fundamentals
+- Stochastic and robust optimization
+- Supervised and unsupervised learning for OR
+- Reinforcement learning for sequential decisions
+- Simulation optimization
+- End-to-end prescriptive analytics pipelines
+
+We will use Python libraries including PuLP, scikit-learn, NumPy, and SciPy throughout.

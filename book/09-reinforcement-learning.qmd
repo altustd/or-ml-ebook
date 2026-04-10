@@ -1,5 +1,123 @@
----
-title: "9 - Reinforcement Learning"
----
+# Reinforcement Learning for Operations Research
 
-Placeholder for Reinforcement Learning in OR contexts.
+Learning optimal policies through interaction with uncertain environments – with applications in inventory control, routing, and dynamic pricing.
+
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from collections import defaultdict
+
+sns.set(style="whitegrid")
+np.random.seed(42)
+```
+
+## Simple Inventory Control with Q-Learning
+
+
+```python
+# Environment: Single-item inventory control (newsvendor-style with stochastic demand)
+class InventoryEnv:
+    def __init__(self, max_inventory=20, holding_cost=1, shortage_cost=10):
+        self.max_inventory = max_inventory
+        self.holding_cost = holding_cost
+        self.shortage_cost = shortage_cost
+        self.reset()
+    
+    def reset(self):
+        self.inventory = np.random.randint(0, self.max_inventory + 1)
+        return self.inventory
+    
+    def step(self, action):
+        # action = order quantity
+        demand = np.random.poisson(8)  # stochastic daily demand
+        self.inventory = min(self.max_inventory, self.inventory + action)
+        
+        sales = min(self.inventory, demand)
+        leftover = self.inventory - sales
+        shortage = demand - sales
+        
+        reward = - (self.holding_cost * leftover + self.shortage_cost * shortage)
+        self.inventory = leftover
+        
+        done = False  # episodic or continuing – here continuing
+        return self.inventory, reward, done
+
+env = InventoryEnv()
+print("Environment ready for Q-Learning")
+```
+
+
+```python
+# Q-Learning Agent
+class QLearningAgent:
+    def __init__(self, max_inventory=20, alpha=0.1, gamma=0.95, epsilon=0.1):
+        self.q_table = defaultdict(lambda: np.zeros(max_inventory + 1))
+        self.alpha = alpha
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.max_inventory = max_inventory
+    
+    def choose_action(self, state):
+        if np.random.rand() < self.epsilon:
+            return np.random.randint(0, self.max_inventory + 1)  # explore
+        return np.argmax(self.q_table[state])  # exploit
+    
+    def learn(self, state, action, reward, next_state):
+        best_next = np.max(self.q_table[next_state])
+        self.q_table[state][action] += self.alpha * (reward + self.gamma * best_next - self.q_table[state][action])
+
+# Training
+agent = QLearningAgent()
+episodes = 5000
+rewards_history = []
+
+for episode in range(episodes):
+    state = env.reset()
+    total_reward = 0
+    for step in range(100):  # one episode = 100 days
+        action = agent.choose_action(state)
+        next_state, reward, done = env.step(action)
+        agent.learn(state, action, reward, next_state)
+        total_reward += reward
+        state = next_state
+    rewards_history.append(total_reward)
+
+print(f"Training completed over {episodes} episodes")
+print(f"Average reward per episode (last 500): {np.mean(rewards_history[-500:]):.2f}")
+```
+
+
+```python
+# Plot learning curve
+plt.figure(figsize=(10, 5))
+plt.plot(np.convolve(rewards_history, np.ones(100)/100, mode='valid'))
+plt.title('Q-Learning Performance on Inventory Control')
+plt.xlabel('Episode')
+plt.ylabel('Smoothed Total Reward')
+plt.show()
+```
+
+## Policy Visualization
+
+
+```python
+# Extract learned policy (best order quantity for each inventory level)
+policy = {}
+for inv in range(env.max_inventory + 1):
+    policy[inv] = np.argmax(agent.q_table[inv])
+
+print("Learned policy (inventory level → order quantity):")
+for inv in range(0, 21, 5):
+    print(f"Inventory {inv:2d} → Order {policy[inv]:2d}")
+```
+
+## Exercises
+
+- Extend the environment to multi-product inventory or vehicle routing.
+- Replace Q-Learning with Deep Q-Network (DQN) using PyTorch.
+- Compare the RL policy against the classical newsvendor critical fractile solution.
+- Apply RL to a dynamic pricing or job scheduling problem.
+
+The next chapter will cover **Simulation Optimization** and integration of ML + OR techniques.

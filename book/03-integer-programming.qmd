@@ -1,0 +1,104 @@
+# Integer Programming
+
+Mixed-Integer Linear Programming (MILP): When decisions must be discrete (yes/no, whole units, or selections).
+
+
+```python
+import pulp
+
+print("PuLP version:", pulp.__version__)
+```
+
+## Knapsack Problem (0-1 Integer Programming)
+
+
+```python
+# 0-1 Knapsack Problem
+prob = pulp.LpProblem("0_1_Knapsack", pulp.LpMaximize)
+
+# Items: (name, value, weight)
+items = {
+    "Laptop":     (800, 3),
+    "Camera":     (300, 2),
+    "Phone":      (500, 1),
+    "Tablet":     (400, 2),
+    "Headphones": (150, 1),
+    "Drone":      (600, 4)
+}
+
+# Decision variables (binary: take or not)
+x = pulp.LpVariable.dicts("take", items.keys(), cat="Binary")
+
+# Objective: Maximize total value
+prob += pulp.lpSum(items[i][0] * x[i] for i in items), "Total_Value"
+
+# Constraint: Weight limit
+prob += pulp.lpSum(items[i][1] * x[i] for i in items) <= 7, "Weight_Limit"
+
+# Solve
+prob.solve(pulp.PULP_CBC_CMD(msg=False))
+
+print("Optimal Knapsack Solution:")
+for i in items:
+    if x[i].value() > 0.5:
+        print(f"  ✓ {i:12s} (Value: ${items[i][0]}, Weight: {items[i][1]})")
+
+print(f"\nTotal Value: ${pulp.value(prob.objective):.0f}")
+print(f"Total Weight: {sum(items[i][1] * x[i].value() for i in items):.0f} / 7 kg")
+```
+
+## Facility Location Problem (Mixed-Integer Programming)
+
+
+```python
+# Simple Uncapacitated Facility Location
+prob = pulp.LpProblem("Facility_Location", pulp.LpMinimize)
+
+facilities = ["Factory_NY", "Factory_CA", "Factory_TX"]
+customers = ["Customer1", "Customer2", "Customer3", "Customer4"]
+
+# Fixed opening cost for each facility
+fixed_cost = {"Factory_NY": 8000, "Factory_CA": 9500, "Factory_TX": 7000}
+
+# Transportation cost from facility to customer
+trans_cost = {
+    "Factory_NY": [200, 450, 600, 300],
+    "Factory_CA": [700, 150, 400, 550],
+    "Factory_TX": [400, 500, 250, 350]
+}
+
+# Variables
+open_fac = pulp.LpVariable.dicts("Open", facilities, cat="Binary")
+assign = pulp.LpVariable.dicts("Assign", [(f, c) for f in facilities for c in customers], cat="Binary")
+
+# Objective: Fixed costs + transportation costs
+prob += (pulp.lpSum(fixed_cost[f] * open_fac[f] for f in facilities) +
+         pulp.lpSum(trans_cost[f][i] * assign[(f, c)] for f in facilities for i, c in enumerate(customers)))
+
+# Constraints
+for c in customers:
+    prob += pulp.lpSum(assign[(f, c)] for f in facilities) == 1, f"Assign_{c}"
+
+for f in facilities:
+    for c in customers:
+        prob += assign[(f, c)] <= open_fac[f], f"Link_{f}_{c}"
+
+# Solve
+prob.solve(pulp.PULP_CBC_CMD(msg=False))
+
+print("Optimal Facility Location Solution:")
+for f in facilities:
+    if open_fac[f].value() > 0.5:
+        print(f"  ✓ Open {f}")
+
+print(f"\nTotal Cost: ${pulp.value(prob.objective):,.0f}")
+```
+
+## Exercises
+
+- Add capacity constraints to the facility location problem.
+- Solve a capital budgeting problem with binary investment decisions.
+- Modify the knapsack to allow multiple copies of items (bounded knapsack).
+- Compare solving time between LP relaxation and full integer version.
+
+Next chapter will cover **Network Optimization** (shortest path, maximum flow, transportation problems).
