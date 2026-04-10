@@ -1,61 +1,44 @@
-# Virtual environments
-or-ml-opt/
+# Quarto / Rendered output
+_book/
+.quarto/
+.quarto/
+*.local
+
+# Jupyter Notebooks - ignore checkpoints and large outputs
+.ipynb_checkpoints/
+__pycache__/
+*.ipynb_checkpoints
+*.pyc
+*.pyo
+
+# Virtual environments (we use conda only)
 .venv/
 venv/
+ENV/
 env/
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+# Conda environment (optional - usually ignored)
+or-ml-ebook-env/
 
-# Quarto / Jupyter
-.quarto/
-_freeze/
-.ipynb_checkpoints/
-*.html
-*.pdf   # optional - add only if you don't want to track rendered PDFs
-
-# OS
+# macOS junk
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+.AppleDouble
+.LSOverride
 
-# Editors / IDEs
+# Temporary / log files
+*.log
+tree.txt
+project_structure.txt
+test_output/
+
+# Large data files (add patterns if you add raw data later)
+*.csv
+*.parquet
+data/raw/*
+!data/raw/.gitkeep
+
+# Editor / IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
-
-/.quarto/
-**/*.quarto_ipynb
-_book/
-.quarto/
-*.html
-*.pdf
-__pycache__/
-*.pyc
-.DS_Store
-or-ml-ebook-env/
-notebooks/*.ipynb.checkpoints/
