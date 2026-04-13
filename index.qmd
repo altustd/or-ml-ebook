@@ -3,13 +3,16 @@ title: "Modern Operations Research with Python"
 subtitle: "From Mathematical Optimization to Prescriptive Analytics"
 author: "Troy Altus"
 date: today
+number-sections: false
 ---
 
 ## Welcome
 
-This book explores the powerful intersection of **Operations Research** and **Machine Learning** using Python. It bridges traditional optimization techniques with modern data-driven methods to solve complex decision-making problems.
+This book explores the powerful intersection of **Operations Research** and **Machine Learning**
+using Python. It bridges traditional optimization techniques with modern data-driven methods
+to solve complex decision-making problems.
 
-### What You'll Learn
+## What You'll Learn
 
 - Core optimization techniques: Linear, Integer, Network, and Nonlinear Programming
 - Handling uncertainty with Stochastic Optimization
@@ -17,21 +20,18 @@ This book explores the powerful intersection of **Operations Research** and **Ma
 - Reinforcement Learning and Simulation Optimization
 - Building end-to-end prescriptive analytics pipelines
 
-### Structure
+## Current Release
 
-**Part I: Foundations**  
-Linear and integer programming, network flows.
+**Foundations** is available now, covering:
 
-**Part II: Advanced Optimization**  
-Stochastic and nonlinear methods under uncertainty and complexity.
+- Introduction to OR and Machine Learning
+- Linear Programming
+- Integer Programming
+- Network Optimization
 
-**Part III: Machine Learning for OR**  
-Predictive models that feed into optimization.
-
-**Part IV: Integration & Applications**  
-Simulation, reinforcement learning, and full prescriptive systems.
+Additional sections covering Advanced Optimization, Machine Learning for OR,
+and Integration & Applications are in progress and will be added in upcoming releases.
 
 ---
 
-Start with [Chapter 1: Introduction to Operations Research and Machine Learning](book/01-introduction-to-or-ml.qmd).
-
+Start with [Introduction to Operations Research and Machine Learning](book/01-introduction-to-or-ml.qmd).
