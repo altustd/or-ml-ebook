@@ -1,0 +1,51 @@
+---
+title: "Probability and Statistics Foundations for OR and ML"
+subtitle: "Chapter 2 – Part I: Foundations"
+author: "Troy Altus"
+---
+
+## Introduction
+
+Probability and statistics form the second pillar of the foundations needed for modern Operations Research and Machine Learning.
+
+While linear algebra provides the language for **structure and transformation**, probability and statistics provide the language for **uncertainty, inference, and decision-making under risk**.
+
+This chapter will cover these topics in depth with intuition, mathematical rigor, worked examples, and Python implementations.
+
+---
+
+## 1. Why Probability & Statistics Matter in OR and ML
+
+- Modeling uncertainty in demand, travel times, failure rates, etc.
+- Making decisions under stochastic conditions
+- Evaluating model performance and confidence intervals
+- Bayesian vs frequentist approaches in optimization
+- Foundation for stochastic programming, reinforcement learning, and risk analysis
+
+---
+
+## 2. Core Concepts (Placeholder)
+
+- Random variables and probability distributions
+- Expectation, variance, and covariance
+- Common distributions (Normal, Poisson, Exponential, Bernoulli, etc.)
+- Central Limit Theorem and its importance in simulation
+- Hypothesis testing and confidence intervals
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Example: Simulate demand with uncertainty
+np.random.seed(42)
+demand = np.random.normal(loc=100, scale=15, size=1000)
+
+print("Mean demand:", demand.mean())
+print("Std demand:", demand.std())
+
+plt.figure(figsize=(8, 5))
+sns.histplot(demand, kde=True)
+plt.title("Distribution of Stochastic Demand")
+plt.xlabel("Demand")
+plt.show()

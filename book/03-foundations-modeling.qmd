@@ -1,0 +1,206 @@
+---
+title: "Mathematical Modeling Principles for Operations Research and Machine Learning"
+subtitle: "Chapter 3 – Part I: Foundations"
+author: "Troy Altus"
+date: "2026-04-12"
+---
+
+## Introduction to Mathematical Modeling
+
+Mathematical modeling is the art and science of translating real-world problems into mathematical form so they can be analyzed, optimized, and solved.
+
+While linear algebra gives us the **tools** and probability gives us the **language of uncertainty**, mathematical modeling teaches us **how to formulate problems** correctly. A well-formulated model is often more important than the solver used to solve it.
+
+This chapter provides a **deep, practical, and verbose** guide to building effective mathematical models for both Operations Research and Machine Learning applications.
+
+---
+
+## 1. Why Good Modeling Matters
+
+A poor model can lead to:
+- Suboptimal or infeasible solutions
+- Models that are computationally intractable
+- Solutions that work in theory but fail dramatically in practice
+- Misleading insights and poor decision-making
+
+A good model balances:
+- **Fidelity** (captures the essence of the real problem)
+- **Tractability** (can be solved with available tools)
+- **Interpretability** (stakeholders can understand the results)
+
+---
+
+## 2. The Modeling Process
+
+Effective modeling follows a structured iterative process:
+
+1. **Problem Understanding** — Deeply understand the business/contextual problem
+2. **Abstraction** — Identify decisions, objectives, and constraints
+3. **Formulation** — Translate into mathematical form (variables, objective, constraints)
+4. **Validation** — Check if the model behaves as expected
+5. **Solution** — Solve the model
+6. **Implementation & Testing** — Deploy and monitor in the real world
+7. **Refinement** — Iterate based on new insights
+
+---
+
+## 3. Key Elements of a Mathematical Model
+
+### Decision Variables
+What do we control? (e.g., how much to produce, which route to take, which features to use)
+
+### Objective Function
+What are we trying to optimize?
+- Maximize profit / minimize cost
+- Maximize accuracy / minimize error
+
+### Constraints
+What limits our choices?
+- Resource limits, capacity, logical relationships, regulatory requirements
+
+### Parameters
+Known or estimated values (costs, capacities, probabilities, etc.)
+
+---
+
+## 4. Common Model Types in OR and ML
+
+Model types can be broadly organized into three families. Understanding which family a problem belongs to informs the choice of algorithm, solver, and toolchain.
+
+### Operations Research Models
+
+| Model Type | Key Characteristic | Typical Python Tool |
+|---|---|---|
+| **Linear Programming (LP)** | Linear objective, linear constraints, continuous variables | `PuLP`, `scipy.optimize` |
+| **Integer Programming (IP)** | Some or all variables restricted to integers | `PuLP`, `cvxpy` |
+| **Mixed-Integer Programming (MIP)** | Mix of integer and continuous variables | `PuLP`, `gurobipy` |
+| **Nonlinear Programming (NLP)** | Nonlinear objective or constraints | `scipy.optimize`, `cvxpy` |
+| **Network Optimization** | Problems structured as graphs (flow, routing, spanning trees) | `networkx` |
+| **Stochastic Programming** | Uncertainty in parameters; decisions under risk | `scipy.stats`, custom |
+| **Robust Optimization** | Solutions feasible across a range of uncertain parameters | `cvxpy` |
+| **Multi-objective Optimization** | Multiple conflicting objectives; Pareto frontier | `scipy.optimize` |
+| **Constraint Programming** | Satisfying constraints is the goal, not just optimizing | `python-constraint` |
+| **Metaheuristics** | Heuristic search for near-optimal solutions (GA, SA, etc.) | `deap`, custom |
+
+### Machine Learning Models
+
+| Model Type | Key Characteristic | Typical Python Tool |
+|---|---|---|
+| **Regression** | Predict a continuous output from features | `scikit-learn` |
+| **Classification** | Assign inputs to discrete categories | `scikit-learn` |
+| **Clustering** | Discover structure in unlabeled data | `scikit-learn` |
+| **Ensemble Methods** | Combine many weak models (random forests, boosting) | `scikit-learn`, `xgboost` |
+| **Deep Learning** | Multi-layer neural networks for complex pattern recognition | `torch`, `tensorflow` |
+| **Time Series** | Model and forecast temporal dependencies | `statsmodels`, `prophet` |
+| **Bayesian Models** | Probabilistic inference; update beliefs with data | `pymc`, `scipy.stats` |
+| **Reinforcement Learning** | Learn policies via reward signals (MDPs, Q-learning) | `gymnasium`, `stable-baselines3` |
+
+### Simulation Models
+
+| Model Type | Key Characteristic | Typical Python Tool |
+|---|---|---|
+| **Discrete-Event Simulation** | System state changes at discrete points in time | `simpy` |
+| **Agent-Based Modeling** | Emergent system behavior from individual agent rules | `mesa` |
+| **Monte Carlo Simulation** | Random sampling to estimate distributions of outcomes | `numpy`, `scipy` |
+
+---
+
+## 5. Formulation Example: Two Models Side by Side
+
+The same real-world question — *how much of each product should we make?* — can be answered with an OR model or an ML model. Understanding the difference is central to choosing the right tool.
+
+**OR Formulation (Linear Program)** — prescriptive, exact, assumes known parameters:
+
+$$\text{Maximize} \quad \sum_i \text{profit}_i \cdot x_i$$
+
+$$\text{Subject to} \quad \sum_i \text{resource}_{ji} \cdot x_i \leq \text{capacity}_j \quad \forall j$$
+
+$$x_i \geq 0 \quad \forall i$$
+
+**ML Formulation (Linear Regression)** — predictive, data-driven, learns from observations:
+
+$$\text{Minimize} \quad \sum_k \left( y_k - \sum_j \beta_j \cdot x_{jk} \right)^2$$
+
+The OR model requires you to specify the objective and constraints explicitly. The ML model learns the relationship between inputs and outputs from data. In practice, you often use ML to estimate the parameters (profit, demand, resource consumption) that feed into the OR model.
+
+```python
+# Side-by-side: OR model solves for optimal decision; ML model predicts a parameter
+
+import numpy as np
+
+# --- ML: Predict profit per unit from historical data ---
+from sklearn.linear_model import LinearRegression
+
+# Historical data: [volume_sold, season_index] -> profit_per_unit
+X_train = np.array([[100, 1], [80, 2], [120, 1], [60, 3], [90, 2]])
+y_train = np.array([42, 38, 45, 31, 40])
+
+ml_model = LinearRegression().fit(X_train, y_train)
+
+# Predict profit per unit for next period (volume ~95, season index 2)
+predicted_profit = ml_model.predict([[95, 2]])[0]
+print(f"ML predicted profit per unit: ${predicted_profit:.2f}")
+
+# --- OR: Use the ML prediction to parameterize and solve the LP ---
+import pulp
+
+problem = pulp.LpProblem("Production_ML_Informed", pulp.LpMaximize)
+
+x_a = pulp.LpVariable("Product_A", lowBound=0)
+x_b = pulp.LpVariable("Product_B", lowBound=0)
+
+# Use ML-predicted profit for Product A
+problem += predicted_profit * x_a + 30 * x_b
+
+# Resource constraints
+problem += 4 * x_a + 2 * x_b <= 160
+problem += 2 * x_a + 3 * x_b <= 120
+
+problem.solve(pulp.PULP_CBC_CMD(msg=0))
+
+print(f"OR optimal — Product A: {pulp.value(x_a):.1f}, Product B: {pulp.value(x_b):.1f}")
+print(f"Maximum profit: ${pulp.value(problem.objective):.2f}")
+```
+
+---
+
+## 6. Choosing the Right Model
+
+No single model type is universally superior. The right choice depends on four factors:
+
+1. **Data availability** — Do you have labeled examples to learn from, or must you specify structure explicitly?
+2. **Need for optimality** — Is a near-optimal heuristic acceptable, or must you prove the solution is optimal?
+3. **Uncertainty** — Are problem parameters known, estimated, or deeply uncertain?
+4. **Interpretability** — Must stakeholders understand and trust the model?
+
+A practical decision guide:
+
+```
+Have labeled training data?
+├── Yes → Consider ML (regression, classification, clustering)
+└── No  → Consider OR (LP, IP, network models)
+
+Need a guaranteed optimal solution?
+├── Yes → Mathematical programming (LP, IP, MIP)
+└── No  → Heuristics or ML-based policies are acceptable
+
+Parameters are uncertain or stochastic?
+├── Yes → Stochastic programming, robust optimization, or simulation
+└── No  → Deterministic OR model
+
+Problem involves sequential decisions over time?
+└── Consider reinforcement learning or dynamic programming
+```
+
+In practice, the most capable modern decision systems combine multiple model types: ML predicts parameters, OR optimizes decisions, simulation stress-tests the solution.
+
+---
+
+## Chapter Summary
+
+- Mathematical modeling translates real-world problems into solvable mathematical form
+- Every model has four elements: decision variables, objective function, constraints, and parameters
+- The modeling process is iterative: formulate, validate, solve, refine
+- OR models are prescriptive and exact; ML models are predictive and data-driven
+- The right model type depends on data availability, optimality requirements, uncertainty, and interpretability
+- Hybrid approaches — ML informing OR — are the state of the art in modern prescriptive analytics

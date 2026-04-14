@@ -1,5 +1,0 @@
----
-title: "6 - Stochastic Optimization"
----
-
-Placeholder for Stochastic Programming.

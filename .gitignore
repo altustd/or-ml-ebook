@@ -1,47 +1,50 @@
-# Quarto / Rendered output
+# Quarto build output
 _book/
-.quarto/
-.quarto/
-*.local
 
-# Jupyter Notebooks - ignore checkpoints and large outputs
+# Quarto temp/cache (not freeze — freeze is committed for reproducibility)
+.quarto/project-cache/
+.quarto/preview/
+.quarto/quarto-session-temp*/
+
+# Freeze libs are redundant with _book/site_libs — don't commit binary fonts/JS
+.quarto/_freeze/**/libs/
+
+# Quarto intermediate artifacts
+**/*.quarto_ipynb
+index_files/
+
+# Jupyter
 .ipynb_checkpoints/
-__pycache__/
-*.ipynb_checkpoints
-*.pyc
-*.pyo
+*.ipynb
 
-# Virtual environments (we use conda only)
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
 .venv/
 venv/
 ENV/
 env/
-
-# Conda environment (optional - usually ignored)
 or-ml-ebook-env/
 
-# macOS junk
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Temporary / log files
-*.log
-tree.txt
-project_structure.txt
-test_output/
-
-# Large data files (add patterns if you add raw data later)
+# Data files
 *.csv
 *.parquet
 data/raw/*
 !data/raw/.gitkeep
 
-# Editor / IDE files
-.vscode/
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs / temp
+*.log
+tree.txt
+project_structure.txt
+test_output/
+
+# Editor
 .idea/
 *.swp
 *.swo
-
-/.quarto/
-**/*.quarto_ipynb

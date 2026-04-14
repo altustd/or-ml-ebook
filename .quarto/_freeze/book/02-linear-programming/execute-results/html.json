@@ -1,0 +1,12 @@
+{
+  "hash": "29a55eaddcc5fa7a623e462c9f61c756",
+  "result": {
+    "engine": "jupyter",
+    "markdown": "---\ntitle: \"Linear Programming\"\nsubtitle: \"Chapter 2 – Section II: Core Optimization Techniques\"\nauthor: \"Troy Altus\"\ndate: \"2026-04-12\"\n---\n\n## Introduction to Linear Programming\n\nLinear Programming (LP) is one of the most widely used optimization techniques in Operations Research. It involves optimizing a linear objective function subject to a set of linear constraints.\n\nThis chapter covers formulation, geometric intuition, solution methods, sensitivity analysis, duality, and practical Python implementations using PuLP.\n\n---\n\n## Standard Form\n\nMaximize \\( c^T x \\)\n\nSubject to \\( Ax \\leq b \\)\n\\( x \\geq 0 \\)\n\n---\n\n## Placeholder\n\nThis is a placeholder chapter. Full content with examples and PuLP code will be added soon.\n\n::: {#e79d5dc4 .cell execution_count=1}\n``` {.python .cell-code}\nprint(\"Linear Programming chapter - placeholder\")\n```\n\n::: {.cell-output .cell-output-stdout}\n```\nLinear Programming chapter - placeholder\n```\n:::\n:::\n\n\n",
+    "supporting": [
+      "02-linear-programming_files"
+    ],
+    "filters": [],
+    "includes": {}
+  }
+}

@@ -1,5 +1,0 @@
----
-title: "11 - Case Studies"
----
-
-Placeholder for real-world applications.

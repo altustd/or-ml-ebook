@@ -50,4 +50,4 @@ format:
     documentclass: scrbook
     number-sections: true
 
-jupyter: python3
+jupyter: orml

@@ -1,68 +1,32 @@
-# Linear Programming
+---
+title: "Linear Programming"
+subtitle: "Chapter 2 – Section II: Core Optimization Techniques"
+author: "Troy Altus"
+date: "2026-04-12"
+---
 
-Foundations of optimization: Modeling and solving linear programs with PuLP in Python.
+## Introduction to Linear Programming
 
+Linear Programming (LP) is one of the most widely used optimization techniques in Operations Research. It involves optimizing a linear objective function subject to a set of linear constraints.
 
-```python
-import pulp
+This chapter covers formulation, geometric intuition, solution methods, sensitivity analysis, duality, and practical Python implementations using PuLP.
 
-print("PuLP version:", pulp.__version__)
+---
+
+## Standard Form
+
+Maximize \( c^T x \)
+
+Subject to \( Ax \leq b \)
+\( x \geq 0 \)
+
+---
+
+## Placeholder
+
+This is a placeholder chapter. Full content with examples and PuLP code will be added soon.
+
+```{python} 
+print("Linear Programming chapter - placeholder")
 ```
 
-## Production Planning Problem (2 Products)
-
-
-```python
-# Create the linear programming problem
-prob = pulp.LpProblem("Production_Planning_Two_Products", pulp.LpMaximize)
-
-# Decision variables
-x1 = pulp.LpVariable("Product_A", lowBound=0, cat="Integer")
-x2 = pulp.LpVariable("Product_B", lowBound=0, cat="Integer")
-
-# Objective function: Maximize profit
-prob += 25 * x1 + 30 * x2, "Total_Profit"
-
-# Constraints
-prob += 3 * x1 + 4 * x2 <= 240, "Machine_Hours"
-prob += 2 * x1 + 1 * x2 <= 100, "Labor_Hours"
-
-# Demand limits
-prob += x1 <= 60, "Max_Demand_A"
-prob += x2 <= 50, "Max_Demand_B"
-
-# Solve the model
-status = prob.solve(pulp.PULP_CBC_CMD(msg=False))
-
-print("Optimal Production Plan:")
-print(f"Product A : {pulp.value(x1):.0f} units")
-print(f"Product B : {pulp.value(x2):.0f} units")
-print(f"Total Profit : ${pulp.value(prob.objective):.2f}")
-```
-
-## Resource Utilization
-
-
-```python
-print("\nResource Usage:")
-print(f"Machine Hours : {3*pulp.value(x1) + 4*pulp.value(x2):.0f} / 240")
-print(f"Labor Hours   : {2*pulp.value(x1) + 1*pulp.value(x2):.0f} / 100")
-```
-
-## Shadow Prices
-
-
-```python
-print("\nShadow Prices (Marginal Value of Resources):")
-for name, c in prob.constraints.items():
-    print(f"{name:20s}: {c.pi:.4f}")
-```
-
-## Exercises
-
-- Increase the machine hours constraint and observe how the solution changes.
-- Add a third product (see previous version if needed).
-- Change profit values and see which product becomes more attractive.
-- Try solving with continuous variables instead of integer.
-
-Next chapter will cover **Integer Programming** and mixed-integer models.
