@@ -48,3 +48,5 @@ test_output/
 .idea/
 *.swp
 *.swo
+
+/.quarto/

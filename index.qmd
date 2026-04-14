@@ -22,16 +22,22 @@ to solve complex decision-making problems.
 
 ## Current Release
 
-**Foundations** is available now, covering:
+**Part I: Mathematical Foundations**
 
-- Introduction to OR and Machine Learning
+- Linear Algebra for OR and ML
+- Probability and Statistics Foundations
+- Mathematical Modeling Principles
+
+**Part II: Core Optimization Techniques**
+
+- Introduction to Operations Research and Machine Learning
 - Linear Programming
 - Integer Programming
 - Network Optimization
 
-Additional sections covering Advanced Optimization, Machine Learning for OR,
-and Integration & Applications are in progress and will be added in upcoming releases.
+Advanced Optimization, Machine Learning for OR, and Integration & Applications
+are in progress and will be added in upcoming releases.
 
 ---
 
-Start with [Introduction to Operations Research and Machine Learning](book/01-introduction-to-or-ml.qmd).
+Start with [Linear Algebra Foundations](book/01-foundations-linear-algebra.qmd).

@@ -23,25 +23,20 @@ Built with [Quarto](https://quarto.org), rendered as HTML and PDF.
 ```bash
 or-ml-ebook/
 ├── book/                              # Quarto chapter files (.qmd)
+│   ├── # Part I: Mathematical Foundations
+│   ├── 01-foundations-linear-algebra.qmd
+│   ├── 02-foundations-probability-statistics.qmd
+│   ├── 03-foundations-modeling.qmd
+│   ├── # Part II: Core Optimization Techniques
 │   ├── 01-introduction-to-or-ml.qmd
 │   ├── 02-linear-programming.qmd
 │   ├── 03-integer-programming.qmd
-│   ├── 04-network-optimization.qmd
-│   ├── 05-stochastic-optimization.qmd
-│   ├── 06-nonlinear-optimization.qmd
-│   ├── 07-supervised-learning.qmd
-│   ├── 08-unsupervised-learning.qmd
-│   ├── 09-reinforcement-learning.qmd
-│   ├── 10-simulation-optimization.qmd
-│   └── 11-prescriptive-analytics.qmd
-├── notebooks/                         # Source Jupyter notebooks (.ipynb)
+│   └── 04-network-optimization.qmd
 ├── _book/                             # Rendered HTML output (generated)
 ├── _quarto.yml                        # Quarto book configuration
 ├── index.qmd                          # Book homepage
 ├── references.bib                     # Bibliography
-├── requirements.txt                   # Python dependencies
-├── convert_all_notebooks.py           # Notebook to QMD conversion utility
-└── test_all_chapters.py               # Chapter render validation
+└── requirements.txt                   # Python dependencies
 ```
 
 ---
@@ -55,8 +50,8 @@ or-ml-ebook/
 git clone https://github.com/altustd/or-ml-ebook.git
 cd or-ml-ebook
 
-# Activate the virtual environment
-source ~/or-ml-opt/bin/activate
+# Activate the conda environment
+conda activate /opt/homebrew/Caskroom/miniforge/base/envs/orml
 
 # Install Python dependencies
 pip install -r requirements.txt
@@ -79,20 +74,26 @@ open _book/index.html
 
 ## Content
 
-### Available Now
+### Part I: Mathematical Foundations
 
-**Foundations**
+| Chapter | Title | Status |
+|---|---|---|
+| 1 | Linear Algebra Foundations | Draft |
+| 2 | Probability and Statistics Foundations | Stub |
+| 3 | Mathematical Modeling Principles | Draft |
 
-| Chapter | Title |
-|---|---|
-| 1 | Introduction to Operations Research and Machine Learning |
-| 2 | Linear Programming |
-| 3 | Integer Programming |
-| 4 | Network Optimization |
+### Part II: Core Optimization Techniques
+
+| Chapter | Title | Status |
+|---|---|---|
+| 1 | Introduction to Operations Research and Machine Learning | Draft |
+| 2 | Linear Programming | Draft |
+| 3 | Integer Programming | Draft |
+| 4 | Network Optimization | Draft |
 
 ### In Progress
 
-| Section | Title |
+| Part | Title |
 |---|---|
 | Advanced Optimization | Stochastic Optimization |
 | Advanced Optimization | Nonlinear Optimization |

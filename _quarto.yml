@@ -10,7 +10,13 @@ book:
   chapters:
     - index.qmd
 
-    - part: "Foundations"
+    - part: "Mathematical Foundations"
+      chapters:
+        - book/01-foundations-linear-algebra.qmd
+        - book/02-foundations-probability-statistics.qmd
+        - book/03-foundations-modeling.qmd
+
+    - part: "Core Optimization Techniques"
       chapters:
         - book/01-introduction-to-or-ml.qmd
         - book/02-linear-programming.qmd
@@ -33,8 +39,8 @@ book:
     #     - book/10-simulation-optimization.qmd
     #     - book/11-prescriptive-analytics.qmd
 
-  # appendices:
-  #   - book/references.qmd
+  appendices:
+    - references.qmd
 
 bibliography: references.bib
 
