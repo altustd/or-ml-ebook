@@ -3,7 +3,7 @@
 **Optimization · Machine Learning · Simulation**
 
 *Author: Troy Altus*
-*Last Updated: April 2026*
+*Last Updated: April 14, 2026*
 
 ---
 
