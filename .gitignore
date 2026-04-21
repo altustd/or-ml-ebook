@@ -50,3 +50,6 @@ test_output/
 *.swo
 
 /.quarto/
+
+# Local Netlify folder
+.netlify
