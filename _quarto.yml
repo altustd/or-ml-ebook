@@ -1,45 +1,29 @@
 project:
   type: book
+  output-dir: _book
 
 book:
   title: "Modern Operations Research with Python"
   subtitle: "Combining Optimization, Machine Learning, and Simulation"
   author: "Troy Altus"
   date: today
+  date-format: "YYYY"
+  search: true
+  downloads: [pdf]
 
   chapters:
     - index.qmd
-
-    - part: "Mathematical Foundations"
+    - part: "Part I: Mathematical Foundations"
       chapters:
-        - book/01-foundations-linear-algebra.qmd
-        - book/02-foundations-probability-statistics.qmd
-        - book/03-foundations-modeling.qmd
-
-    - part: "Core Optimization Techniques"
+        - chapters/01-foundations-linear-algebra.qmd
+        - chapters/02-foundations-probability-statistics.qmd
+        - chapters/03-foundations-modeling.qmd
+    - part: "Part II: Core Optimization"
       chapters:
-        - book/01-introduction-to-or-ml.qmd
-        - book/02-linear-programming.qmd
-        - book/03-integer-programming.qmd
-        - book/04-network-optimization.qmd
-
-    # - part: "Advanced Optimization"
-    #   chapters:
-    #     - book/05-stochastic-optimization.qmd
-    #     - book/06-nonlinear-optimization.qmd
-
-    # - part: "Machine Learning for OR"
-    #   chapters:
-    #     - book/07-supervised-learning.qmd
-    #     - book/08-unsupervised-learning.qmd
-    #     - book/09-reinforcement-learning.qmd
-
-    # - part: "Integration & Applications"
-    #   chapters:
-    #     - book/10-simulation-optimization.qmd
-    #     - book/11-prescriptive-analytics.qmd
-
-  appendices:
+        - chapters/01-introduction-to-or-ml.qmd
+        - chapters/02-linear-programming.qmd
+        - chapters/03-integer-programming.qmd
+        - chapters/04-network-optimization.qmd
     - references.qmd
 
 bibliography: references.bib
@@ -47,13 +31,35 @@ bibliography: references.bib
 format:
   html:
     theme: cosmo
-    code-fold: true
+    code-fold: show
     code-tools: true
     toc: true
+    toc-depth: 3
     number-sections: true
-    smooth-scroll: true
+    highlight-style: github
+    fig-width: 8
+    fig-height: 5
+    fig-align: center
+    html-math-method: mathjax
   pdf:
-    documentclass: scrbook
+    documentclass: book
+    classoption: [letterpaper, 11pt]
+    geometry:
+      - top=1in
+      - bottom=1in
+      - left=1.25in
+      - right=1in
     number-sections: true
+    colorlinks: true
+    toc: true
+    toc-depth: 3
+    fig-pos: "H"
+    keep-tex: false
 
 jupyter: orml
+
+execute:
+  echo: true
+  warning: false
+  message: false
+  cache: false

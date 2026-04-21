@@ -40,4 +40,4 @@ are in progress and will be added in upcoming releases.
 
 ---
 
-Start with [Linear Algebra Foundations](book/01-foundations-linear-algebra.qmd).
+Start with [Linear Algebra Foundations](chapters/01-foundations-linear-algebra.qmd).
