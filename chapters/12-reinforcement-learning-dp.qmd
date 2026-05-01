@@ -1,0 +1,17 @@
+# Reinforcement Learning as Dynamic Programming {#sec-rl-dp}
+
+::: {.callout-note appearance="simple"}
+## Learning Objectives
+- Derive RL from first principles as approximate dynamic programming
+- Implement value iteration and policy iteration for small MDPs
+- Apply Q-learning when the state space is too large for exact DP
+- Connect Bellman equations to neural network value function approximation
+:::
+
+## Introduction
+
+*Coming soon.*
+
+## Summary
+
+## Further Reading

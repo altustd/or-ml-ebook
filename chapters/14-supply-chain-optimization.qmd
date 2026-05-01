@@ -1,0 +1,17 @@
+# Supply Chain Optimization {#sec-supply-chain}
+
+::: {.callout-note appearance="simple"}
+## Learning Objectives
+- Formulate inventory optimization problems (EOQ, newsvendor, multi-period)
+- Model the Vehicle Routing Problem (VRP) as integer programming
+- Build a predict-then-optimize pipeline for stochastic demand
+- Evaluate cost of ignoring uncertainty vs. stochastic solutions
+:::
+
+## Introduction
+
+*Coming soon.*
+
+## Summary
+
+## Further Reading

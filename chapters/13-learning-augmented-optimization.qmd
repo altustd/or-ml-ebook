@@ -1,0 +1,17 @@
+# Learning-Augmented Combinatorial Optimization {#sec-learned-opt}
+
+::: {.callout-note appearance="simple"}
+## Learning Objectives
+- Understand how ML can accelerate branch-and-bound solvers
+- Apply learned branching rules and primal heuristics in MIP
+- Use graph neural networks to encode combinatorial problem structure
+- Evaluate learned vs. classical heuristics on benchmark problems
+:::
+
+## Introduction
+
+*Coming soon.*
+
+## Summary
+
+## Further Reading

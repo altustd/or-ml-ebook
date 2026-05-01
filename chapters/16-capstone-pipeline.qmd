@@ -1,0 +1,20 @@
+# Capstone: End-to-End ML + OR Pipeline {#sec-capstone}
+
+::: {.callout-note appearance="simple"}
+## Learning Objectives
+- Build a complete ML + OR pipeline from raw data to deployed decision
+- Integrate forecasting, stochastic optimization, and sensitivity analysis
+- Evaluate solution quality vs. naive benchmarks
+- Document and reproduce results in a production-ready notebook
+:::
+
+## Introduction
+
+This chapter applies every technique in the book to a single real problem:
+raw data → ML forecast → stochastic OR model → optimal decision → sensitivity analysis.
+
+*Coming soon.*
+
+## Summary
+
+## Further Reading

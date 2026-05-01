@@ -1,0 +1,17 @@
+# Robust Optimization {#sec-robust}
+
+::: {.callout-note appearance="simple"}
+## Learning Objectives
+- Distinguish robust optimization from stochastic programming
+- Construct ellipsoidal and polyhedral uncertainty sets
+- Build data-driven uncertainty sets from historical observations using ML
+- Solve robust LP and robust IP formulations
+:::
+
+## Introduction
+
+*Coming soon.*
+
+## Summary
+
+## Further Reading

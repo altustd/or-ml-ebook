@@ -1,13 +1,12 @@
 project:
   type: book
-  output-dir: _book
+  output-dir: docs
 
 book:
   title: "Modern Operations Research with Python"
   subtitle: "Combining Optimization, Machine Learning, and Simulation"
   author: "Troy Altus"
-  date: today
-  date-format: "YYYY"
+  date: "May 2026"
   search: true
   downloads: [pdf]
 
@@ -18,12 +17,27 @@ book:
         - chapters/01-foundations-linear-algebra.qmd
         - chapters/02-foundations-probability-statistics.qmd
         - chapters/03-foundations-modeling.qmd
-    - part: "Part II: Core Optimization"
+    - part: "Part II: Classical Optimization"
       chapters:
-        - chapters/01-introduction-to-or-ml.qmd
-        - chapters/02-linear-programming.qmd
-        - chapters/03-integer-programming.qmd
-        - chapters/04-network-optimization.qmd
+        - chapters/04-introduction-to-or-ml.qmd
+        - chapters/05-linear-programming.qmd
+        - chapters/06-integer-programming.qmd
+        - chapters/07-network-optimization.qmd
+    - part: "Part III: Uncertainty and Data-Driven Optimization"
+      chapters:
+        - chapters/08-stochastic-programming.qmd
+        - chapters/09-robust-optimization.qmd
+        - chapters/10-simulation-monte-carlo.qmd
+    - part: "Part IV: Machine Learning Meets Optimization"
+      chapters:
+        - chapters/11-predict-then-optimize.qmd
+        - chapters/12-reinforcement-learning-dp.qmd
+        - chapters/13-learning-augmented-optimization.qmd
+    - part: "Part V: Applications"
+      chapters:
+        - chapters/14-supply-chain-optimization.qmd
+        - chapters/15-resource-scheduling.qmd
+        - chapters/16-capstone-pipeline.qmd
     - references.qmd
 
 bibliography: references.bib

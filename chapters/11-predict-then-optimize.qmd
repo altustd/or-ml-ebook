@@ -1,0 +1,17 @@
+# Predict-then-Optimize {#sec-predict-optimize}
+
+::: {.callout-note appearance="simple"}
+## Learning Objectives
+- Understand the predict-then-optimize pipeline: ML forecast → OR decision
+- Implement the newsvendor problem with ML-predicted demand
+- Apply the SPO+ loss function to train forecasting models that minimize decision cost, not prediction error
+- Compare standard MSE-trained vs. decision-aware trained models
+:::
+
+## Introduction
+
+*Coming soon.*
+
+## Summary
+
+## Further Reading

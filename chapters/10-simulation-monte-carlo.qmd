@@ -1,0 +1,17 @@
+# Simulation and Monte Carlo Methods {#sec-simulation}
+
+::: {.callout-note appearance="simple"}
+## Learning Objectives
+- Apply Monte Carlo integration and simulation to OR problems
+- Implement discrete-event simulation in Python
+- Use surrogate models (Gaussian process, neural network) to replace expensive simulations
+- Understand Bayesian optimization as simulation-based optimization
+:::
+
+## Introduction
+
+*Coming soon.*
+
+## Summary
+
+## Further Reading

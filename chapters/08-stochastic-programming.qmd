@@ -1,0 +1,17 @@
+# Stochastic Programming {#sec-stochastic}
+
+::: {.callout-note appearance="simple"}
+## Learning Objectives
+- Formulate two-stage stochastic programs with recourse
+- Understand scenario-based representations of uncertainty
+- Apply Sample Average Approximation (SAA) to data-driven problems
+- Solve stochastic programs using PuLP and SciPy
+:::
+
+## Introduction
+
+*Coming soon.*
+
+## Summary
+
+## Further Reading

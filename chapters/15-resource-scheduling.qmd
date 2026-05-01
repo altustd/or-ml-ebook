@@ -1,0 +1,17 @@
+# Resource Scheduling {#sec-scheduling}
+
+::: {.callout-note appearance="simple"}
+## Learning Objectives
+- Formulate workforce and project scheduling as integer programs
+- Apply CPM and PERT for project network analysis
+- Model job-shop scheduling with ML-predicted task durations
+- Handle resource constraints and deadline uncertainty
+:::
+
+## Introduction
+
+*Coming soon.*
+
+## Summary
+
+## Further Reading
