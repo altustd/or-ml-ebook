@@ -3,15 +3,387 @@
 ::: {.callout-note appearance="simple"}
 ## Learning Objectives
 - Distinguish robust optimization from stochastic programming
-- Construct ellipsoidal and polyhedral uncertainty sets
-- Build data-driven uncertainty sets from historical observations using ML
-- Solve robust LP and robust IP formulations
+- Construct box, ellipsoidal, and polyhedral uncertainty sets
+- Reformulate robust LPs as tractable deterministic equivalents
+- Build data-driven uncertainty sets from historical observations
+- Solve robust programs using PuLP and NumPy
 :::
 
-## Introduction
+## The Problem with Distributions
 
-*Coming soon.*
+Stochastic programming (@sec-stochastic) requires specifying a probability distribution over uncertain parameters — or at minimum, a representative set of scenarios. In many real situations, this is the weak link:
+
+- Historical data is sparse or nonstationary.
+- The decision-maker doesn't trust the fitted distribution.
+- A rare but catastrophic scenario has probability near zero under the fitted model but must be protected against anyway.
+
+Robust optimization takes a different philosophical stance: instead of modeling uncertainty probabilistically, we define an **uncertainty set** $\mathcal{U}$ containing all parameter realizations we consider plausible, then optimize for the **worst case** within that set.
+
+$$\min_x \; \max_{\xi \in \mathcal{U}} \; f(x, \xi)$$ {#eq-robust-minimax}
+
+Subject to constraints that hold for *every* $\xi \in \mathcal{U}$.
+
+The result is a decision that is feasible and near-optimal no matter which element of $\mathcal{U}$ occurs. The price is conservatism — the robust solution sacrifices some expected performance to guarantee worst-case protection.
+
+## Robust Linear Programming
+
+Consider a linear program whose constraint matrix depends on an uncertain parameter:
+
+$$\min_x \; c^\top x \quad \text{subject to} \quad a(\xi)^\top x \leq b \quad \forall \xi \in \mathcal{U}, \quad x \geq 0$$ {#eq-robust-lp}
+
+The robust constraint $a(\xi)^\top x \leq b \; \forall \xi \in \mathcal{U}$ must hold for every possible realization of $a$. This is equivalent to:
+
+$$\max_{\xi \in \mathcal{U}} \; a(\xi)^\top x \leq b$$ {#eq-robust-constraint}
+
+The tractability of the robust problem depends on the shape of $\mathcal{U}$.
+
+## Uncertainty Set Geometry
+
+The choice of $\mathcal{U}$ is the key modeling decision in robust optimization. Three shapes dominate in practice.
+
+### Box Uncertainty Set
+
+The simplest set: each parameter $\xi_i$ varies independently within $[\bar{\xi}_i - \hat{\xi}_i, \, \bar{\xi}_i + \hat{\xi}_i]$:
+
+$$\mathcal{U}_{\text{box}} = \{\xi : |\xi_i - \bar{\xi}_i| \leq \hat{\xi}_i, \; i = 1, \ldots, n\}$$ {#eq-box-set}
+
+The worst case over a box set is solved by setting each $\xi_i$ to its worst extreme:
+
+$$\max_{\xi \in \mathcal{U}_{\text{box}}} a(\xi)^\top x = \bar{a}^\top x + \hat{a}^\top |x|$$ {#eq-box-worst-case}
+
+The robust constraint becomes $\bar{a}^\top x + \hat{a}^\top |x| \leq b$ — a simple LP constraint. Box uncertainty is easy to implement but very conservative: it assumes all parameters simultaneously take their worst values, which is unlikely.
+
+### Ellipsoidal Uncertainty Set
+
+An ellipsoidal set allows parameter deviations but limits their *combined* magnitude:
+
+$$\mathcal{U}_{\text{ellip}} = \{\xi : \|\Sigma^{-1/2}(\xi - \bar{\xi})\|_2 \leq \Omega\}$$ {#eq-ellip-set}
+
+where $\Sigma$ is a covariance matrix and $\Omega$ controls the size of the ellipsoid. The worst case over an ellipsoid leads to a **second-order cone** constraint:
+
+$$\bar{a}^\top x + \Omega \|\Sigma^{1/2} x\|_2 \leq b$$ {#eq-socp-constraint}
+
+This is a second-order cone program (SOCP) — tractable in polynomial time. Ellipsoidal sets are statistically motivated: if $\xi \sim \mathcal{N}(\bar{\xi}, \Sigma)$, then $\mathcal{U}_{\text{ellip}}$ with $\Omega = \sqrt{\chi^2_{n,1-\alpha}}$ contains $1-\alpha$ of the probability mass. Ellipsoidal sets are less conservative than box sets because they prevent all parameters from simultaneously being at their worst.
+
+### Polyhedral (Budget) Uncertainty Set
+
+Introduced by Bertsimas and Sim (2004), the budget set addresses box conservatism by limiting how many parameters can deviate simultaneously:
+
+$$\mathcal{U}_{\Gamma} = \left\{\xi : |\xi_i - \bar{\xi}_i| \leq \hat{\xi}_i, \; \sum_i \frac{|\xi_i - \bar{\xi}_i|}{\hat{\xi}_i} \leq \Gamma \right\}$$ {#eq-budget-set}
+
+The parameter $\Gamma \in [0, n]$ is the **budget of uncertainty**: at most $\Gamma$ parameters deviate simultaneously. When $\Gamma = 0$, the nominal solution. When $\Gamma = n$, the box solution.
+
+The budget robust LP is equivalent to a standard LP:
+
+$$\bar{a}^\top x + \min_{z, \lambda} \left\{ \Gamma \lambda + \sum_i z_i : z_i \geq \hat{a}_i |x_i| - \lambda, \; z_i \geq 0, \; \lambda \geq 0 \right\} \leq b$$ {#eq-budget-reformulation}
+
+This trades conservatism for flexibility: the decision-maker can dial $\Gamma$ to balance protection vs. cost of robustness.
+
+```{python}
+#| label: fig-uncertainty-sets
+#| fig-cap: "Three uncertainty sets in 2D parameter space. Box contains all combinations of extremes. Ellipsoid accounts for correlation and limits joint deviations. Budget ($\\Gamma=1$) allows at most one parameter to deviate simultaneously."
+
+import numpy as np
+import plotly.graph_objects as go
+
+theta = np.linspace(0, 2*np.pi, 300)
+xi_bar = np.array([0, 0])
+
+# Box
+box_x = [-1, 1, 1, -1, -1]
+box_y = [-1, -1, 1, 1, -1]
+
+# Ellipsoid (axis-aligned, semi-axes 1.0 and 0.6)
+ell_x = np.cos(theta)
+ell_y = 0.6 * np.sin(theta)
+
+# Budget Gamma=1: |x1| + |x2| <= 1  (L1 ball = diamond)
+bud_x = [1, 0, -1, 0, 1]
+bud_y = [0, 1, 0, -1, 0]
+
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=box_x, y=box_y, mode='lines',
+    name='Box', line=dict(color='crimson', width=2)))
+fig.add_trace(go.Scatter(x=ell_x, y=ell_y, mode='lines',
+    name='Ellipsoid', line=dict(color='steelblue', width=2)))
+fig.add_trace(go.Scatter(x=bud_x, y=bud_y, mode='lines',
+    name='Budget (Γ=1)', line=dict(color='seagreen', width=2, dash='dash')))
+fig.add_trace(go.Scatter(x=[0], y=[0], mode='markers',
+    marker=dict(size=8, color='black'), name='Nominal ξ̄'))
+
+fig.update_layout(
+    xaxis_title='ξ₁ deviation', yaxis_title='ξ₂ deviation',
+    xaxis=dict(range=[-1.4, 1.4], zeroline=True),
+    yaxis=dict(range=[-1.4, 1.4], zeroline=True, scaleanchor='x'),
+    template='plotly_white', height=420,
+    legend=dict(x=0.02, y=0.98)
+)
+fig.show()
+```
+
+## Worked Example: Robust Portfolio Optimization
+
+A fund manager allocates capital across $n$ assets. Returns are uncertain. The nominal expected returns are $\bar{r}$, and each return $r_i$ can deviate by up to $\hat{r}_i$. The goal is to maximize the worst-case portfolio return subject to a budget constraint and a long-only constraint.
+
+**Nominal LP:**
+$$\max_w \; \bar{r}^\top w \quad \text{s.t.} \quad \mathbf{1}^\top w = 1, \quad w \geq 0$$
+
+**Robust LP (box uncertainty):**
+$$\max_w \; \bar{r}^\top w - \hat{r}^\top w \quad \text{s.t.} \quad \mathbf{1}^\top w = 1, \quad w \geq 0$$
+
+(Worst case: each asset return = $\bar{r}_i - \hat{r}_i$ since we're maximizing and $w \geq 0$.)
+
+**Robust LP (budget uncertainty, $\Gamma$):**
+
+$$\max_{w, z, \lambda} \; \bar{r}^\top w - \Gamma \lambda - \sum_i z_i$$
+$$\text{s.t.} \quad \mathbf{1}^\top w = 1, \quad w \geq 0, \quad z_i \geq \hat{r}_i w_i - \lambda, \quad z_i \geq 0, \quad \lambda \geq 0$$
+
+```{python}
+#| label: fig-robust-portfolio
+#| fig-cap: "Portfolio allocation across assets for nominal, box-robust, and budget-robust (Γ=2) solutions. Robust solutions concentrate in assets with smaller uncertainty (lower deviation bars)."
+
+import pulp
+import pandas as pd
+import plotly.graph_objects as go
+import numpy as np
+
+np.random.seed(42)
+n = 6
+asset_names = [f"Asset {i+1}" for i in range(n)]
+
+r_bar = np.array([0.12, 0.10, 0.15, 0.08, 0.13, 0.09])
+r_hat = np.array([0.04, 0.02, 0.07, 0.01, 0.05, 0.02])
+
+def solve_nominal(r_bar):
+    prob = pulp.LpProblem("Nominal", pulp.LpMaximize)
+    w = [pulp.LpVariable(f"w{i}", lowBound=0) for i in range(n)]
+    prob += pulp.lpSum(r_bar[i] * w[i] for i in range(n))
+    prob += pulp.lpSum(w) == 1
+    prob.solve(pulp.PULP_CBC_CMD(msg=0))
+    return np.array([pulp.value(w[i]) for i in range(n)])
+
+def solve_box_robust(r_bar, r_hat):
+    # Worst case: r_i - r_hat_i for each asset (w >= 0)
+    prob = pulp.LpProblem("BoxRobust", pulp.LpMaximize)
+    w = [pulp.LpVariable(f"w{i}", lowBound=0) for i in range(n)]
+    prob += pulp.lpSum((r_bar[i] - r_hat[i]) * w[i] for i in range(n))
+    prob += pulp.lpSum(w) == 1
+    prob.solve(pulp.PULP_CBC_CMD(msg=0))
+    return np.array([pulp.value(w[i]) for i in range(n)])
+
+def solve_budget_robust(r_bar, r_hat, gamma):
+    prob = pulp.LpProblem("BudgetRobust", pulp.LpMaximize)
+    w   = [pulp.LpVariable(f"w{i}",  lowBound=0) for i in range(n)]
+    z   = [pulp.LpVariable(f"z{i}",  lowBound=0) for i in range(n)]
+    lam =  pulp.LpVariable("lambda", lowBound=0)
+    prob += pulp.lpSum(r_bar[i]*w[i] for i in range(n)) - gamma*lam - pulp.lpSum(z)
+    prob += pulp.lpSum(w) == 1
+    for i in range(n):
+        prob += z[i] >= r_hat[i] * w[i] - lam
+    prob.solve(pulp.PULP_CBC_CMD(msg=0))
+    return np.array([pulp.value(w[i]) for i in range(n)])
+
+w_nom = solve_nominal(r_bar)
+w_box = solve_box_robust(r_bar, r_hat)
+w_bud = solve_budget_robust(r_bar, r_hat, gamma=2)
+
+x = np.arange(n)
+width = 0.28
+
+fig = go.Figure()
+for weights, name, color in [
+    (w_nom, 'Nominal',         'steelblue'),
+    (w_box, 'Box Robust',      'crimson'),
+    (w_bud, 'Budget (Γ=2)',    'seagreen'),
+]:
+    fig.add_trace(go.Bar(
+        name=name,
+        x=asset_names,
+        y=weights,
+        marker_color=color
+    ))
+
+fig.update_layout(
+    barmode='group',
+    yaxis_title='Portfolio Weight',
+    template='plotly_white',
+    height=420,
+    legend=dict(x=0.02, y=0.98)
+)
+fig.show()
+
+df = pd.DataFrame({
+    'Asset':    asset_names,
+    'E[Return]':r_bar,
+    'Deviation':r_hat,
+    'Nominal':  w_nom.round(3),
+    'Box':      w_box.round(3),
+    'Budget Γ=2': w_bud.round(3)
+})
+print(df.to_string(index=False))
+```
+
+The nominal solution concentrates heavily in the highest expected-return asset regardless of uncertainty. The box-robust solution fully concentrates in the asset with the best *worst-case* return (highest $\bar{r}_i - \hat{r}_i$). The budget solution is between — it spreads weight across multiple assets, hedging against *some* deviations occurring simultaneously without assuming all do.
+
+## The Price of Robustness
+
+Robustness is not free. The robust solution sacrifices nominal performance to buy worst-case protection. The **price of robustness** is the gap between nominal and robust objective values.
+
+```{python}
+#| label: fig-price-robustness
+#| fig-cap: "Price of robustness vs. budget parameter Γ. As Γ increases, the robust portfolio return decreases while worst-case protection increases."
+
+gammas = np.linspace(0, n, 30)
+nominal_ret  = r_bar @ w_nom
+robust_rets  = []
+worstcase_rets = []
+
+for g in gammas:
+    w = solve_budget_robust(r_bar, r_hat, g)
+    robust_rets.append(r_bar @ w)
+    # worst case: subtract top-g deviations
+    devs = np.sort(r_hat * w)[::-1]
+    k = int(np.floor(g))
+    frac = g - k
+    wc = r_bar @ w - (np.sum(devs[:k]) + (frac * devs[k] if k < n else 0))
+    worstcase_rets.append(wc)
+
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=gammas, y=robust_rets,
+    mode='lines', name='Nominal return of robust solution',
+    line=dict(color='steelblue', width=2)))
+fig.add_trace(go.Scatter(x=gammas, y=worstcase_rets,
+    mode='lines', name='Worst-case return',
+    line=dict(color='crimson', width=2, dash='dash')))
+fig.add_hline(y=nominal_ret, line_dash='dot', line_color='gray',
+    annotation_text='Unconstrained nominal', annotation_position='right')
+
+fig.update_layout(
+    xaxis_title='Budget Γ',
+    yaxis_title='Portfolio Return',
+    template='plotly_white',
+    height=400,
+    legend=dict(x=0.4, y=0.98)
+)
+fig.show()
+```
+
+As $\Gamma$ increases from 0 to $n$:
+
+- Nominal return of the robust solution **decreases** — the optimizer accepts lower expected return to protect against more simultaneous deviations.
+- Worst-case return **increases** then flattens — more protection against simultaneous deviations.
+
+The inflection point depends on $\hat{r}$ and the problem structure. In practice, $\Gamma \approx \sqrt{n}$ is a common heuristic, calibrated to give meaningful but not excessive protection.
+
+## Data-Driven Uncertainty Sets
+
+The ML connection: when historical data is available, we can construct uncertainty sets directly from observations without assuming a distribution.
+
+**Bootstrap ellipsoid.** Given $T$ historical observations $\{\xi^1, \ldots, \xi^T\}$:
+
+1. Estimate the sample mean $\hat{\mu}$ and covariance $\hat{\Sigma}$.
+2. Set the uncertainty set as: $\mathcal{U} = \{\xi : (\xi - \hat{\mu})^\top \hat{\Sigma}^{-1} (\xi - \hat{\mu}) \leq \chi^2_{n, 1-\alpha}\}$.
+3. This set contains approximately $1-\alpha$ of future observations if the distribution is stationary.
+
+**Conformal prediction sets.** A distribution-free approach: use conformal prediction to construct sets with finite-sample coverage guarantees — no distributional assumption required.
+
+```{python}
+#| label: fig-data-driven-set
+#| fig-cap: "Data-driven uncertainty ellipsoid constructed from 200 historical return observations. The ellipsoid is fit to sample mean and covariance; its size corresponds to 90% empirical coverage."
+
+import numpy as np
+from scipy import stats
+import plotly.graph_objects as go
+
+rng = np.random.default_rng(7)
+T = 200
+
+# True distribution: bivariate normal with correlation
+mu_true = np.array([0.12, 0.10])
+cov_true = np.array([[0.04**2, 0.6*0.04*0.03],
+                     [0.6*0.04*0.03, 0.03**2]])
+data = rng.multivariate_normal(mu_true, cov_true, T)
+
+# Fit sample mean and covariance
+mu_hat  = data.mean(axis=0)
+cov_hat = np.cov(data.T)
+
+# 90% ellipsoid: chi2(2) at 0.90
+chi2_90 = stats.chi2.ppf(0.90, df=2)
+
+# Generate ellipse boundary
+theta = np.linspace(0, 2*np.pi, 300)
+unit_circle = np.stack([np.cos(theta), np.sin(theta)])
+L = np.linalg.cholesky(cov_hat)
+ellipse = mu_hat[:, None] + L @ unit_circle * np.sqrt(chi2_90)
+
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=data[:, 0], y=data[:, 1],
+    mode='markers', name='Historical obs.',
+    marker=dict(size=4, color='steelblue', opacity=0.5)
+))
+fig.add_trace(go.Scatter(
+    x=ellipse[0], y=ellipse[1],
+    mode='lines', name='90% ellipsoid',
+    line=dict(color='crimson', width=2)
+))
+fig.add_trace(go.Scatter(
+    x=[mu_hat[0]], y=[mu_hat[1]],
+    mode='markers', name='Sample mean',
+    marker=dict(size=10, color='black', symbol='x')
+))
+fig.update_layout(
+    xaxis_title='Asset 1 Return',
+    yaxis_title='Asset 2 Return',
+    template='plotly_white',
+    height=420
+)
+fig.show()
+```
+
+The data-driven ellipsoid calibrates to the actual correlation structure of returns. A box set would ignore the correlation and be more conservative; a hand-specified ellipsoid might misspecify the shape. The sample-covariance ellipsoid is directly informed by history.
+
+## Robust vs. Stochastic: When to Use Which
+
+| Criterion | Stochastic Programming | Robust Optimization |
+|---|---|---|
+| Distribution known? | Required | Not required |
+| Tail/catastrophic events | Depends on scenario set | Built-in via $\mathcal{U}$ |
+| Solution conservatism | Moderate (scenario-weighted) | High (worst-case) |
+| Computational form | Large LP (many scenarios) | Compact LP/SOCP |
+| Risk interpretation | Expected cost | Worst-case guarantee |
+| Parameter: $\Gamma$ or $\Omega$ | None (use probabilities) | Controls conservatism |
+
+In practice: use stochastic programming when you have reliable historical data and care about expected performance. Use robust optimization when the distribution is uncertain, catastrophic outcomes must be avoided, or you need a compact tractable formulation.
 
 ## Summary
 
+| Concept | Key Formula | Tractable Form |
+|---|---|---|
+| Box uncertainty | $\|\xi - \bar{\xi}\|_\infty \leq \hat{\xi}$ | LP |
+| Ellipsoidal uncertainty | $\|\Sigma^{-1/2}(\xi-\bar{\xi})\|_2 \leq \Omega$ | SOCP |
+| Budget uncertainty | $\|\xi - \bar{\xi}\|_1 / \hat{\xi} \leq \Gamma$ | LP |
+| Price of robustness | $z_{\text{robust}} - z_{\text{nominal}}$ | Monitor vs. $\Gamma$ |
+| Data-driven set | Fit $\hat{\mu}, \hat{\Sigma}$ from data | Chi-squared ellipsoid |
+
+The next chapter (@sec-simulation) introduces simulation-based optimization — the tool for problems where $Q(x, \xi)$ cannot be expressed as a closed-form LP and must be estimated by running a system model. Gaussian process surrogates and Bayesian optimization will replace the analytical recourse function with a learned approximation.
+
+## Exercises
+
+1. Verify the box robust constraint reformulation. For $a(\xi)^\top x \leq b$ with $a_i \in [\bar{a}_i - \hat{a}_i, \bar{a}_i + \hat{a}_i]$ and $x \geq 0$, show algebraically that $\max_{\xi \in \mathcal{U}_{\text{box}}} a(\xi)^\top x = (\bar{a} + \hat{a})^\top x$. What changes if $x$ is not constrained to be non-negative?
+
+2. In the portfolio example, compute the price of robustness for box and budget ($\Gamma = 2$) solutions: the percentage reduction in nominal expected return relative to the nominal solution. Which is more expensive?
+
+3. Extend the portfolio problem to include a **risk constraint**: total portfolio variance $w^\top \Sigma w \leq \sigma^2_{\max}$ where $\Sigma$ is the return covariance matrix. How does the budget-robust solution change? (Hint: add the variance constraint to the LP; approximate if needed.)
+
+4. The Bertsimas-Sim budget parameter $\Gamma$ controls how many parameters deviate. In a problem with $n = 10$ uncertain parameters, plot the probability that *more than* $\Gamma$ parameters simultaneously deviate $\hat{\xi}_i$ from their nominal values, assuming independent uniform deviations. At what $\Gamma$ does this probability drop below 1%?
+
+5. Construct a data-driven uncertainty ellipsoid using the bootstrap: re-sample the 200 historical observations with replacement 500 times, fit $\hat{\mu}$ and $\hat{\Sigma}$ to each bootstrap sample, and visualize the resulting distribution of ellipsoid axes. What does this tell you about the estimation uncertainty in the uncertainty set itself?
+
 ## Further Reading
+
+- Ben-Tal, Aharon, Laurent El Ghaoui, and Arkadi Nemirovski. *Robust Optimization*. Princeton University Press, 2009. (The foundational textbook.)
+- Bertsimas, Dimitris, and Melvyn Sim. "The Price of Robustness." *Operations Research* 52, no. 1 (2004): 35–53. (Original budget uncertainty paper.)
+- Bertsimas, Dimitris, David B. Brown, and Constantine Caramanis. "Theory and Applications of Robust Optimization." *SIAM Review* 53, no. 3 (2011): 464–501. (Comprehensive survey; free PDF available.)
+- Delage, Erick, and Yinyu Ye. "Distributionally Robust Optimization Under Moment Uncertainty." *Operations Research* 58, no. 3 (2010): 595–612. (Bridge between robust and stochastic: uncertainty sets defined by moment constraints.)
