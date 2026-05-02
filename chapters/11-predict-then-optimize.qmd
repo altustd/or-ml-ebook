@@ -1,17 +1,525 @@
-# Predict-then-Optimize {#sec-predict-optimize}
+# Predict-then-Optimize {#sec-pto}
 
 ::: {.callout-note appearance="simple"}
 ## Learning Objectives
-- Understand the predict-then-optimize pipeline: ML forecast → OR decision
-- Implement the newsvendor problem with ML-predicted demand
-- Apply the SPO+ loss function to train forecasting models that minimize decision cost, not prediction error
-- Compare standard MSE-trained vs. decision-aware trained models
+- Formulate the predict-then-optimize pipeline and identify where it breaks down
+- Explain why minimizing prediction error does not minimize decision regret
+- Apply quantile regression to align a forecast with a downstream decision objective
+- Measure decision regret and compare classical vs. decision-focused approaches
+- Implement the SPO+ surrogate loss for decision-focused training
 :::
 
-## Introduction
+## The Classical Assumption and Why It Fails {#sec-pto-intro}
 
-*Coming soon.*
+Every OR model in Parts II and III assumed the problem parameters are known: costs,
+demands, travel times. In practice they are unknown and must be estimated from data.
+The standard engineering response is a clean two-step pipeline:
+
+1. **Predict** — train an ML model to estimate the uncertain parameters
+   $\hat{\xi} \approx \xi$ from features $x$ (day of week, weather, historical data)
+2. **Optimize** — plug $\hat{\xi}$ into the OR model and solve
+
+This pipeline is intuitive, modular, and widely deployed. It is also wrong in a
+subtle but consequential way.
+
+**Prediction error and decision regret measure different things.** A model that
+minimises mean squared error (MSE) on demand forecasts minimises the distance between
+$\hat{\xi}$ and $\xi$ in $\ell_2$ norm. But the OR model is not a linear function of
+$\xi$ — it has constraints, integer structure, or combinatorial feasibility. A small
+prediction error can lead to a large decision error, and a large prediction error may
+have no impact at all if the optimal decision is unchanged.
+
+The gap between these two objectives — prediction quality vs. decision quality — is the
+central problem of this chapter.
+
+::: {.callout-important}
+**Prediction regret vs. decision regret.** Let $z^*(\xi)$ be the optimal decision
+under the true parameter $\xi$, and $z^*(\hat{\xi})$ be the decision made using the
+prediction. The **decision regret** is:
+
+$$\text{Regret}(\hat{\xi}, \xi) = c^\top z^*(\hat{\xi}) - c^\top z^*(\xi) \geq 0$$ {#eq-regret}
+
+This is the extra cost paid because we used a prediction instead of the truth.
+Minimising prediction MSE does not minimise expected regret. A model trained to
+minimise regret directly is called **decision-focused** or **cost-sensitive**.
+:::
+
+---
+
+## Running Example: The Newsvendor {#sec-pto-newsvendor}
+
+The newsvendor is the simplest predict-then-optimize problem. Optimal order quantity
+$q^* = F_D^{-1}\!\bigl(\frac{p-c}{p-s}\bigr)$ depends on the demand *quantile* at
+the critical ratio $\tau = (p-c)/(p-s)$, not on the demand *mean*.
+
+A retailer observes features $x$ (day of week, temperature, promotional flag) and
+must predict demand before ordering. Two models:
+
+- **Mean regression**: predicts $\hat{\mu} = \mathbb{E}[D \mid x]$ then orders
+  the predicted mean — mismatched to the critical ratio
+- **Quantile regression**: predicts the $\tau$-quantile of $D \mid x$ directly —
+  aligns the forecast with the decision objective by construction
+
+### Generating a Synthetic Dataset
+
+```{python}
+#| label: setup-newsvendor
+
+import numpy as np
+import pandas as pd
+from scipy import stats
+
+rng = np.random.default_rng(42)
+
+# Problem parameters
+c_nv, p_nv, s_nv = 6, 18, 1
+tau = (p_nv - c_nv) / (p_nv - s_nv)   # critical ratio
+
+N = 2_000
+
+# Features: weekend flag, temperature deviation, promo flag, trend
+dow     = rng.integers(0, 7, N)
+temp    = rng.normal(0, 1, N)
+promo   = (rng.uniform(size=N) < 0.25).astype(float)
+trend   = np.linspace(0, 0.5, N)
+
+# True conditional log-mean of demand
+log_mu  = 4.0 + 0.35 * (dow >= 5).astype(float) + 0.18 * temp + 0.55 * promo + trend
+log_sig = 0.40
+D       = rng.lognormal(log_mu, log_sig)
+
+# Oracle: true τ-quantile of D|x at each observation
+q_oracle = np.exp(log_mu + log_sig * stats.norm.ppf(tau))
+
+X = np.column_stack([
+    (dow == 5).astype(float),   # Saturday
+    (dow == 6).astype(float),   # Sunday
+    temp,
+    promo,
+    trend,
+])
+
+n_train = 1_400
+X_tr, X_te = X[:n_train], X[n_train:]
+D_tr, D_te = D[:n_train], D[n_train:]
+q_oracle_te = q_oracle[n_train:]
+log_mu_te   = log_mu[n_train:]
+
+print(f"Critical ratio τ = {tau:.3f}  (order the {tau:.1%} quantile)")
+print(f"Training: {n_train}  |  Test: {N - n_train}")
+print(f"Demand range: {D.min():.0f} – {D.max():.0f}  (mean {D.mean():.0f})")
+```
+
+### Mean Regression (Naive Two-Stage)
+
+```{python}
+#| label: mean-regression
+
+from sklearn.linear_model import Ridge
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
+pipe_mean = Pipeline([("sc", StandardScaler()), ("m", Ridge(alpha=1.0))])
+pipe_mean.fit(X_tr, np.log(D_tr))
+
+log_mu_hat = pipe_mean.predict(X_te)
+# Order the predicted conditional mean E[D|x] = exp(μ + σ²/2) for log-normal
+q_mean_te = np.exp(log_mu_hat + 0.5 * log_sig**2)
+
+print(f"Mean-regression — mean predicted order: {q_mean_te.mean():.1f}")
+print(f"Oracle           — mean order:          {q_oracle_te.mean():.1f}")
+```
+
+### Quantile Regression (Decision-Focused)
+
+Quantile regression minimises the **pinball loss**:
+
+$$\ell_\tau(\hat{q}, d) = \begin{cases} \tau\,(\hat{q} - d) & \hat{q} \geq d \\ (1-\tau)(d - \hat{q}) & \hat{q} < d \end{cases}$$ {#eq-pinball}
+
+At the minimum, the predicted value is the $\tau$-quantile of $D \mid x$.
+Because $\tau = (p-c)/(p-s)$, the quantile-regression prediction *is* the optimal
+order quantity — no second formula required.
+
+```{python}
+#| label: quantile-regression
+
+from sklearn.linear_model import QuantileRegressor
+
+qr = QuantileRegressor(quantile=tau, alpha=0.01, solver="highs")
+qr.fit(X_tr, np.log(D_tr))
+
+log_q_hat = qr.predict(X_te)
+q_quant_te = np.exp(log_q_hat)
+
+print(f"Quantile-regression — mean predicted order: {q_quant_te.mean():.1f}")
+```
+
+### Comparing Decision Regret
+
+```{python}
+#| label: fig-regret-comparison
+#| fig-cap: "Decision regret on the test set. Quantile regression (aligned with the decision objective) achieves substantially lower regret than mean regression, closing most of the gap to the oracle."
+
+import plotly.graph_objects as go
+
+def nv_profit(q, D):
+    sold   = np.minimum(q, D)
+    unsold = np.maximum(q - D, 0)
+    return p_nv * sold + s_nv * unsold - c_nv * q
+
+pi_oracle = nv_profit(q_oracle_te, D_te)
+pi_mean   = nv_profit(q_mean_te,   D_te)
+pi_quant  = nv_profit(q_quant_te,  D_te)
+
+reg_mean  = pi_oracle - pi_mean
+reg_quant = pi_oracle - pi_quant
+
+print(f"{'Policy':<25} {'Mean regret':>13} {'Median regret':>14} {'% zero regret':>14}")
+print("-" * 70)
+for label, reg in [("Mean regression", reg_mean), ("Quantile regression", reg_quant)]:
+    print(f"{label:<25} {reg.mean():>13.2f} {np.median(reg):>14.2f} {100*(reg<=0).mean():>13.1f}%")
+
+fig = go.Figure()
+for reg, name, col in [
+    (reg_mean,  "Mean regression",     "steelblue"),
+    (reg_quant, "Quantile regression", "seagreen"),
+]:
+    fig.add_trace(go.Histogram(x=reg, nbinsx=60, name=name,
+        marker_color=col, opacity=0.65, histnorm="probability density"))
+    fig.add_vline(x=reg.mean(), line_color=col, line_dash="dash", line_width=2)
+
+fig.update_layout(
+    barmode="overlay",
+    xaxis_title="Decision Regret (oracle profit − policy profit, $)",
+    yaxis_title="Density",
+    template="plotly_white", height=400,
+    legend=dict(x=0.6, y=0.98),
+)
+fig.show()
+
+imp = 100 * (reg_mean.mean() - reg_quant.mean()) / reg_mean.mean()
+print(f"\nQuantile regression reduces mean regret by {imp:.1f}%")
+```
+
+Mean regression is wrong by design: it predicts $\mathbb{E}[D \mid x]$ but the
+newsvendor demands $F_{D|x}^{-1}(\tau)$, which differs from the mean whenever
+demand is asymmetrically distributed. With log-normal demand and $\tau = 0.71$,
+the τ-quantile is consistently above the mean — mean regression chronically
+under-orders.
+
+---
+
+## Shortest Path with Predicted Costs {#sec-pto-sp}
+
+The newsvendor has a clean analytical connection between forecast and decision.
+The problem becomes harder — and more illustrative — when the decision is a
+combinatorial object.
+
+**Setup.** A logistics network is modelled as a directed 5×5 grid graph (25 nodes,
+40 arcs). True arc costs depend on features (time of day, congestion index, weather).
+A model predicts costs from features and routes via the predicted shortest path.
+The loss is the extra true distance travelled vs. the oracle — pure decision regret.
+
+```{python}
+#| label: sp-data
+
+import networkx as nx
+
+rng2 = np.random.default_rng(7)
+
+G = nx.grid_2d_graph(5, 5, create_using=nx.DiGraph)
+G = nx.relabel_nodes(G, {n: i for i, n in enumerate(G.nodes())})
+edges   = list(G.edges())
+n_edges = len(edges)
+n_inst  = 800
+
+feat  = rng2.normal(size=(n_inst, n_edges, 3))
+noise = rng2.normal(scale=0.20, size=(n_inst, n_edges))
+
+# True cost: nonlinear in features
+def true_cost_fn(F):
+    f1, f2, f3 = F[:, 0], F[:, 1], F[:, 2]
+    return np.clip(0.5 + 1.2 * f1 + 0.8 * f2**2 + 0.4 * f1 * f3 + 0.3, 0.05, None)
+
+C_true = true_cost_fn(feat.reshape(-1, 3)).reshape(n_inst, n_edges) + noise
+C_true = np.maximum(C_true, 0.01)
+
+n_tr2 = 600
+F_tr2 = feat[:n_tr2].reshape(n_tr2 * n_edges, 3)
+C_tr2 = C_true[:n_tr2].reshape(n_tr2 * n_edges)
+F_te2 = feat[n_tr2:].reshape((n_inst - n_tr2) * n_edges, 3)
+n_te2 = n_inst - n_tr2
+
+print(f"Graph: {G.number_of_nodes()} nodes, {n_edges} directed edges")
+print(f"Train: {n_tr2} instances  |  Test: {n_te2} instances")
+```
+
+```{python}
+#| label: fig-sp-regret
+#| fig-cap: "Routing decision regret on test instances. Most instances have zero regret — predicted costs lead to the same path as true costs. The tail is driven by instances where prediction noise swaps two near-equal-cost paths."
+
+from sklearn.linear_model import Ridge, HuberRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+import plotly.graph_objects as go
+
+def route_and_cost(G, edges, c_pred_vec, c_true_vec):
+    """Return true cost of route chosen using predicted costs."""
+    for (u, v), c in zip(edges, c_pred_vec):
+        G[u][v]["weight"] = float(max(c, 1e-6))
+    path = nx.shortest_path(G, 0, 24, weight="weight")
+    path_set = set(zip(path[:-1], path[1:]))
+    return sum(c_true_vec[j] for j, (u, v) in enumerate(edges) if (u, v) in path_set)
+
+def oracle_cost(G, edges, c_true_vec):
+    for (u, v), c in zip(edges, c_true_vec):
+        G[u][v]["weight"] = float(c)
+    path = nx.shortest_path(G, 0, 24, weight="weight")
+    path_set = set(zip(path[:-1], path[1:]))
+    return sum(c_true_vec[j] for j, (u, v) in enumerate(edges) if (u, v) in path_set)
+
+def compute_routing_regret(model, feat_te, C_true_te, G, edges, n_te):
+    c_pred_all = model.predict(feat_te)
+    regrets = []
+    for i in range(n_te):
+        cp = c_pred_all[i * n_edges:(i + 1) * n_edges]
+        ct = C_true_te[i]
+        cost_policy = route_and_cost(G, edges, cp, ct)
+        cost_opt    = oracle_cost(G, edges, ct)
+        regrets.append(cost_policy - cost_opt)
+    return np.array(regrets)
+
+pipe_ridge = Pipeline([("sc", StandardScaler()), ("m", Ridge(alpha=1.0))])
+pipe_huber = Pipeline([("sc", StandardScaler()), ("m", HuberRegressor(epsilon=1.5, max_iter=400))])
+
+pipe_ridge.fit(F_tr2, C_tr2)
+pipe_huber.fit(F_tr2, C_tr2)
+
+C_true_te2 = C_true[n_tr2:]
+
+reg_ridge = compute_routing_regret(pipe_ridge, F_te2, C_true_te2, G, edges, n_te2)
+reg_huber = compute_routing_regret(pipe_huber, F_te2, C_true_te2, G, edges, n_te2)
+
+print(f"{'Regressor':<22} {'Mean regret':>12} {'Median':>10} {'% zero':>10}")
+print("-" * 58)
+for name, reg in [("Ridge (MSE)", reg_ridge), ("Huber (robust)", reg_huber)]:
+    print(f"{name:<22} {reg.mean():>12.4f} {np.median(reg):>10.4f} {100*(reg<1e-9).mean():>9.1f}%")
+
+fig = go.Figure()
+for reg, name, col in [
+    (reg_ridge, "Ridge (MSE)",     "steelblue"),
+    (reg_huber, "Huber (robust)",  "darkorange"),
+]:
+    fig.add_trace(go.Histogram(x=reg[reg > 1e-6], nbinsx=40, name=name,
+        marker_color=col, opacity=0.65, histnorm="probability density"))
+
+fig.update_layout(
+    barmode="overlay",
+    xaxis_title="Decision Regret (extra routing cost vs. oracle)",
+    yaxis_title="Density (non-zero regret instances)",
+    template="plotly_white", height=380,
+    legend=dict(x=0.6, y=0.98),
+)
+fig.show()
+```
+
+Both models have zero regret on most instances — prediction noise does not change
+the shortest-path choice unless it swaps two near-equal-cost alternatives. The
+Huber regressor, more robust to cost outliers, slightly reduces the high-regret tail.
+
+---
+
+## Decision-Focused Learning: SPO+ {#sec-spo}
+
+### The SPO Loss
+
+For a minimisation problem $\min_{z \in \mathcal{Z}} c^\top z$, decision regret is:
+
+$$\ell_{\text{SPO}}(\hat{c}, c) = c^\top z^*(\hat{c}) - c^\top z^*(c) \geq 0$$ {#eq-spo}
+
+This is the true target but non-convex and non-differentiable in $\hat{c}$ —
+$z^*(\hat{c})$ is a piecewise-constant step function of the predicted costs.
+
+### The SPO+ Surrogate
+
+Elmachtoub and Grigas (2022) derive a convex upper bound:
+
+$$\ell_{\text{SPO+}}(\hat{c}, c) = \max_{z \in \mathcal{Z}} \left[(2c - \hat{c})^\top z\right] - c^\top z^*(c) + \hat{c}^\top z^*(c)$$ {#eq-spo-plus}
+
+The gradient with respect to $\hat{c}$ is $z^*(c) - z^*(2c - \hat{c})$ — the
+difference between the oracle decision and the decision under the perturbed cost
+$2c - \hat{c}$. Computing this gradient requires solving the downstream OR problem
+once per training sample per step.
+
+**Key insight:** For the newsvendor, the SPO+ gradient reduces exactly to the
+pinball loss subgradient at quantile $\tau$. Quantile regression *is* SPO+ training
+for the newsvendor. This extends: whenever the OR problem has a known optimal
+condition that depends only on a quantile or rank order of $\xi$, decision-focused
+training reduces to a classical statistical problem.
+
+```{python}
+#| label: fig-spo-convergence
+#| fig-cap: "SPO+ training vs. MSE baseline on the newsvendor. Decision regret on the test set decreases over epochs as the model shifts from minimising prediction error toward minimising decision cost."
+
+import plotly.graph_objects as go
+from scipy import stats
+
+rng3 = np.random.default_rng(99)
+
+N3, n_feat3 = 1_200, 5
+beta_true3 = np.array([0.4, 0.25, -0.12, 0.5, 0.1])
+X3    = rng3.normal(size=(N3, n_feat3))
+lmu3  = 4.0 + X3 @ beta_true3
+lsig3 = 0.35
+D3    = rng3.lognormal(lmu3, lsig3)
+
+n_tr3 = 900
+X_tr3, X_te3 = X3[:n_tr3], X3[n_tr3:]
+D_tr3, D_te3 = D3[:n_tr3], D3[n_tr3:]
+lmu_te3 = lmu3[n_tr3:]
+q_oracle3 = np.exp(lmu_te3 + lsig3 * stats.norm.ppf(tau))
+
+# MSE baseline
+Xa_tr = np.column_stack([np.ones(n_tr3), X_tr3])
+Xa_te = np.column_stack([np.ones(N3 - n_tr3), X_te3])
+b_mse = np.linalg.lstsq(Xa_tr, np.log(D_tr3), rcond=None)[0]
+q_mse3 = np.exp(Xa_te @ b_mse + 0.5 * lsig3**2)
+regret_mse3 = (nv_profit(q_oracle3, D_te3) - nv_profit(q_mse3, D_te3)).mean()
+
+# SPO+ via pinball SGD
+b_spo = np.zeros(n_feat3 + 1)
+lr3, batch3, n_ep3 = 0.04, 64, 80
+epoch_regrets = []
+
+for ep in range(n_ep3):
+    idx3 = rng3.permutation(n_tr3)
+    for s in range(0, n_tr3, batch3):
+        b  = idx3[s:s + batch3]
+        Xb = np.column_stack([np.ones(len(b)), X_tr3[b]])
+        Db = D_tr3[b]
+        resid = np.log(Db) - Xb @ b_spo
+        g     = -(np.where(resid >= 0, (1 - tau), -tau) * Xb.T).mean(axis=1)
+        b_spo -= lr3 * g
+
+    q_spo3 = np.exp(Xa_te @ b_spo + lsig3 * stats.norm.ppf(tau))
+    epoch_regrets.append(
+        (nv_profit(q_oracle3, D_te3) - nv_profit(q_spo3, D_te3)).mean()
+    )
+
+fig = go.Figure()
+fig.add_trace(go.Scatter(y=epoch_regrets, mode="lines", name="SPO+ (decision-focused)",
+    line=dict(color="seagreen", width=2)))
+fig.add_hline(y=regret_mse3, line_dash="dash", line_color="steelblue",
+    annotation_text=f"MSE baseline = {regret_mse3:.2f}",
+    annotation_position="right")
+fig.add_hline(y=0, line_dash="dot", line_color="gray",
+    annotation_text="Oracle (zero regret)", annotation_position="right")
+fig.update_layout(
+    xaxis_title="Training epoch",
+    yaxis_title="Mean decision regret on test set",
+    template="plotly_white", height=380,
+    legend=dict(x=0.6, y=0.98),
+)
+fig.show()
+
+print(f"MSE baseline regret : {regret_mse3:.4f}")
+print(f"SPO+ final regret   : {epoch_regrets[-1]:.4f}")
+print(f"Reduction           : {100*(regret_mse3 - epoch_regrets[-1])/regret_mse3:.1f}%")
+```
+
+---
+
+## When Does Decision-Focused Training Matter? {#sec-pto-when}
+
+| Setting | Gap between MSE and regret | Recommendation |
+|---|---|---|
+| Asymmetric loss ($\tau \neq 0.5$) | Large | Quantile regression at $\tau$ |
+| LP at a vertex (binary choice) | Large at cost gap | SPO+ or robust regression |
+| Smooth, interior optimum | Small | Standard two-stage adequate |
+| Many near-optimal solutions | Small | Two-stage adequate |
+| Rank-order matters more than magnitude | Moderate | Pairwise / ranking losses |
+
+The key diagnostic is **sensitivity**: how much does the optimal decision change per
+unit change in the predicted parameter? When the decision is a discontinuous function
+of $\xi$ — a vertex of a polytope, an integer assignment — sensitivity is zero almost
+everywhere and infinite at the boundary. MSE loss is blind to these boundaries.
+
+```{python}
+#| label: fig-sensitivity-diagram
+#| fig-cap: "Decision sensitivity as a function of cost gap between competing solutions. At small cost gaps, even small prediction errors flip the optimal decision; at large gaps the solution is robust to noise."
+
+import numpy as np
+import plotly.graph_objects as go
+
+sigma_pred = np.linspace(0.0, 1.5, 200)
+fig = go.Figure()
+
+for delta, col, name in [(0.2, "crimson", "Δ = 0.2 (tight)"),
+                          (0.6, "darkorange", "Δ = 0.6 (moderate)"),
+                          (1.5, "steelblue", "Δ = 1.5 (robust)")]:
+    from scipy.special import erfc
+    p_flip = 0.5 * erfc(delta / (np.sqrt(2) * sigma_pred + 1e-9))
+    fig.add_trace(go.Scatter(x=sigma_pred, y=p_flip * delta, mode="lines",
+        name=name, line=dict(color=col, width=2)))
+
+fig.update_layout(
+    xaxis_title="Prediction standard deviation σ",
+    yaxis_title="Expected decision regret",
+    template="plotly_white", height=370,
+    legend=dict(x=0.02, y=0.98),
+)
+fig.show()
+```
+
+When the cost gap $\Delta$ between two competing solutions is small, even low-noise
+predictions cause frequent decision flips. Decision-focused training buys the most
+in this regime — it learns to be accurate where it matters (near the decision
+boundary) rather than uniformly accurate.
+
+---
 
 ## Summary
 
+| Concept | Formula | Role |
+|---|---|---|
+| Decision regret | $c^\top z^*(\hat{\xi}) - c^\top z^*(\xi)$ | True loss for predict-then-optimize |
+| Critical ratio | $\tau = (p-c)/(p-s)$ | Newsvendor: target quantile |
+| Pinball loss | $\ell_\tau(\hat{q}, d)$ | Trains model to predict $\tau$-quantile |
+| SPO loss | $c^\top z^*(\hat{c}) - c^\top z^*(c)$ | Exact regret; non-convex |
+| SPO+ | Convex surrogate of SPO loss | Differentiable; needs OR solve per step |
+
+## Exercises
+
+1. In the newsvendor example, vary $\tau$ from 0.2 to 0.9 by changing $p$ while
+   holding $c$ and $s$ fixed. Plot mean regret for mean regression vs. quantile
+   regression as a function of $\tau$. At what $\tau$ is the gap largest, and why?
+
+2. Show that quantile regression at $\tau$ is the exact SPO+ solution for the
+   newsvendor. Specifically, derive the SPO+ gradient from @eq-spo-plus and show it
+   equals the pinball subgradient.
+
+3. In the routing example, implement a **cost-weighted MSE**: multiply each edge's
+   squared prediction error by the true cost of that edge, penalising errors on
+   high-cost (critical) arcs more. Does this reduce routing regret?
+
+4. Extend the newsvendor to a **multi-product** setting: five items share a joint
+   budget constraint. Train both MSE and SPO+ models and compare decision regret when
+   the budget constraint is active vs. slack.
+
+5. Implement a simple SPO+ training loop for the shortest-path example (5×5 grid).
+   At each mini-batch step, compute the SPO+ gradient by solving two shortest-path
+   problems per instance. Compare routing regret against Ridge and Huber after 20
+   training epochs.
+
 ## Further Reading
+
+- Elmachtoub, Adam N., and Paul Grigas. "Smart Predict, then Optimize." *Management
+  Science* 68, no. 1 (2022): 9–26. (Original SPO+ paper with theoretical guarantees.)
+- Mandi, Jayanta, et al. "Decision-Focused Learning: Foundations, State of the Art,
+  Benchmark and Future Opportunities." *Journal of Artificial Intelligence Research*
+  80 (2024): 1623–1701.
+- Koenker, Roger. *Quantile Regression*. Cambridge University Press, 2005.
+- Wilder, Bryan, Bistra Dilkina, and Milind Tambe. "Melding the Data-Decisions Pipeline:
+  Decision-Focused Learning for Combinatorial Optimization." *AAAI*, 2019.
+- Demirović, Emir, et al. "Predict+Optimise with Ranking Objectives: Exhaustively
+  Learning Linear Functions." *IJCAI*, 2019.
