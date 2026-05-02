@@ -1,17 +1,417 @@
-# Reinforcement Learning as Dynamic Programming {#sec-rl-dp}
+# Reinforcement Learning and Dynamic Programming {#sec-rl-dp}
 
 ::: {.callout-note appearance="simple"}
 ## Learning Objectives
-- Derive RL from first principles as approximate dynamic programming
-- Implement value iteration and policy iteration for small MDPs
-- Apply Q-learning when the state space is too large for exact DP
-- Connect Bellman equations to neural network value function approximation
+- Formulate sequential decision problems as Markov Decision Processes
+- Solve finite-horizon inventory control exactly via dynamic programming
+- Implement Q-learning for the same problem without a model
+- Explain why RL scales to state spaces where exact DP becomes intractable
+- Connect RL to classical OR through the Bellman equations
 :::
 
-## Introduction
+## Sequential Decisions Over Time {#sec-rl-intro}
 
-*Coming soon.*
+The OR models in Parts II and III optimise a single decision under constraints. Real
+operations involve sequences of decisions — inventory replenishments, staffing levels,
+routing choices — where each decision changes the state of the system and affects what
+decisions are available and profitable in the future.
+
+**Dynamic Programming (DP)** solves sequential problems exactly by working backwards
+from a terminal condition. It requires a complete model of how actions change state and
+what rewards they generate. When the state space is small and the model is known, DP is
+unbeatable.
+
+**Reinforcement Learning (RL)** takes a different approach: an agent learns a policy by
+interacting with the system, observing rewards, and updating its behaviour — without
+needing an explicit model. This makes RL the right tool when:
+
+- The model is unknown or too complex to specify analytically
+- The state space is large enough to make exact DP computationally infeasible
+- The environment changes over time and must be learned online
+
+Through-line: we solve the same inventory control problem exactly with DP, then learn a
+near-optimal policy with Q-learning, and show both converge to the same solution —
+while only RL can scale to the more complex multi-product problem.
+
+---
+
+## Markov Decision Processes {#sec-mdp}
+
+The standard framework for sequential decision problems is the **Markov Decision
+Process (MDP)**:
+
+- **State space** $\mathcal{S}$: all possible system configurations
+- **Action space** $\mathcal{A}(s)$: actions available in state $s$
+- **Transition function** $P(s' \mid s, a)$: probability of reaching $s'$ from $s$ under action $a$
+- **Reward function** $R(s, a)$: immediate reward from taking action $a$ in state $s$
+- **Discount factor** $\gamma \in [0,1]$: weight on future vs. immediate rewards
+
+The goal is a **policy** $\pi: \mathcal{S} \to \mathcal{A}$ maximising expected discounted
+cumulative reward:
+
+$$V^\pi(s) = \mathbb{E}_\pi\!\left[\sum_{t=0}^\infty \gamma^t R(S_t, A_t) \;\Big|\; S_0 = s\right]$$ {#eq-value-fn}
+
+The **optimal value function** $V^*(s) = \max_\pi V^\pi(s)$ satisfies the
+**Bellman optimality equation**:
+
+$$V^*(s) = \max_{a \in \mathcal{A}(s)} \left[R(s, a) + \gamma \sum_{s'} P(s' \mid s, a)\, V^*(s')\right]$$ {#eq-bellman}
+
+This recursive equation is the key to both DP (solved exactly) and RL (approximated
+from data).
+
+---
+
+## Inventory Control as an MDP {#sec-inventory-mdp}
+
+### Problem Setup
+
+A retailer manages a single product over $T = 12$ periods. At the start of each period:
+
+1. Choose order quantity $a \in \{0, 1, \ldots, 10\}$
+2. Inventory arrives immediately (zero lead time)
+3. Random demand $D \sim \text{Poisson}(\lambda)$ is realised
+4. Sales occur; excess demand is lost; leftover stock is held over
+
+**State:** inventory on hand $s \in \{0, \ldots, S_{\max}\}$ before ordering.
+
+**Reward:**
+
+$$R(s, a, d) = p \min(s + a, d) - h \max(s + a - d, 0) - c_o \cdot \mathbf{1}[a > 0] - c_u \cdot a$$ {#eq-inv-reward}
+
+```{python}
+#| label: inventory-setup
+
+import numpy as np
+from scipy import stats
+
+lam   = 5          # Poisson demand mean
+p     = 10.0       # selling price per unit
+h     = 1.0        # holding cost per unit per period
+c_o   = 5.0        # fixed ordering cost (if a > 0)
+c_u   = 3.0        # variable ordering cost per unit
+S_MAX = 20         # maximum inventory level
+A_MAX = 10         # maximum order quantity
+T     = 12         # planning horizon (periods)
+gamma = 0.98       # discount factor
+
+states  = np.arange(S_MAX + 1)   # 0 … 20
+actions = np.arange(A_MAX + 1)   # 0 … 10
+n_s, n_a = len(states), len(actions)
+
+# Precompute expected rewards and transition probabilities
+R_sa    = np.zeros((n_s, n_a))
+P_trans = np.zeros((n_s, n_a, n_s))
+
+for s in states:
+    for a in actions:
+        inv = s + a
+        if inv > S_MAX:
+            P_trans[s, a, s] = 1.0
+            R_sa[s, a]       = -1e6   # infeasible
+            continue
+        order_cost = c_o * (a > 0) + c_u * a
+        for d in range(40):
+            prob_d = stats.poisson.pmf(d, lam)
+            if prob_d < 1e-9:
+                continue
+            sold        = min(inv, d)
+            leftover    = max(inv - d, 0)
+            r           = p * sold - h * leftover - order_cost
+            s_next      = min(leftover, S_MAX)
+            R_sa[s, a]           += prob_d * r
+            P_trans[s, a, s_next] += prob_d
+
+print(f"State space : {n_s} levels (0 – {S_MAX})")
+print(f"Action space: {n_a} choices (0 – {A_MAX})")
+print(f"Horizon T   : {T} periods,  γ = {gamma}")
+```
+
+---
+
+## Exact Solution: Value Iteration {#sec-dp-vi}
+
+Value iteration initialises $V(s) = 0$ for all states and applies the Bellman operator
+$T$ times (backwards over the horizon):
+
+$$V_t(s) = \max_{a} \left[R(s, a) + \gamma \sum_{s'} P(s' \mid s, a)\, V_{t+1}(s')\right]$$ {#eq-vi}
+
+```{python}
+#| label: value-iteration
+
+def value_iteration(R_sa, P_trans, gamma, T, n_s, n_a):
+    V      = np.zeros(n_s)
+    policy = np.zeros((T, n_s), dtype=int)
+    for t in range(T - 1, -1, -1):
+        Q_all  = R_sa + gamma * (P_trans @ V).reshape(n_s, n_a)
+        # mask infeasible actions
+        Q_all[R_sa < -1e5] = -1e9
+        policy[t] = np.argmax(Q_all, axis=1)
+        V         = Q_all[np.arange(n_s), policy[t]]
+    return V, policy
+
+V_dp, policy_dp = value_iteration(R_sa, P_trans, gamma, T, n_s, n_a)
+
+print("Optimal order quantities — period 1 (start of horizon):")
+for s in range(0, 21, 5):
+    a = policy_dp[0, s]
+    print(f"  s = {s:2d}  →  order {a:2d}  (order-up-to {s + a})")
+```
+
+```{python}
+#| label: fig-dp-policy
+#| fig-cap: "Optimal DP policy at period 1. Order quantity decreases as on-hand inventory increases, producing the classic order-up-to structure. The dotted line marks mean demand."
+
+import plotly.graph_objects as go
+
+fig = go.Figure()
+fig.add_trace(go.Bar(x=states, y=policy_dp[0], name="Order quantity",
+    marker_color="steelblue", opacity=0.8))
+fig.add_trace(go.Scatter(x=states, y=states + policy_dp[0], mode="lines+markers",
+    name="Order-up-to level", line=dict(color="crimson", width=2), marker=dict(size=5)))
+fig.add_hline(y=lam, line_dash="dot", line_color="seagreen",
+    annotation_text=f"Mean demand λ = {lam}", annotation_position="right")
+fig.update_layout(
+    xaxis_title="On-hand inventory (start of period)",
+    yaxis_title="Units",
+    template="plotly_white", height=400,
+    legend=dict(x=0.6, y=0.98),
+)
+fig.show()
+```
+
+The DP recovers the **order-up-to-S** policy structure without being told it: order
+enough to bring inventory to a target level $S^*$ whenever stock falls below it, and
+do nothing otherwise. This is the known optimal structure for this problem class.
+
+---
+
+## Q-Learning: Model-Free RL {#sec-q-learning}
+
+### The Q-Function and Update Rule
+
+The **action-value function** $Q(s, a)$ equals the expected discounted return from
+taking action $a$ in state $s$ and following the optimal policy:
+
+$$Q^*(s, a) = R(s, a) + \gamma \sum_{s'} P(s' \mid s, a)\, V^*(s')$$ {#eq-q-fn}
+
+Q-learning estimates $Q^*$ from simulated experience without knowing $P$ or $R$:
+
+$$Q(s, a) \leftarrow Q(s, a) + \alpha \underbrace{\left[r + \gamma \max_{a'} Q(s', a') - Q(s, a)\right]}_{\text{TD error}}$$ {#eq-q-update}
+
+The TD error is the gap between the current estimate and the observed reward plus
+bootstrapped future value. With $\varepsilon$-greedy exploration and a decaying
+learning rate, Q-learning converges to $Q^*$ for any finite MDP.
+
+```{python}
+#| label: q-learning
+
+def sim_step(s, a, rng):
+    inv = s + a
+    if inv > S_MAX:
+        return s, -1e6
+    d      = rng.poisson(lam)
+    sold   = min(inv, d)
+    left   = max(inv - d, 0)
+    r      = p * sold - h * left - c_o * (a > 0) - c_u * a
+    return min(left, S_MAX), r
+
+def q_learning(n_ep=80_000, alpha=0.05, eps_start=1.0, eps_end=0.02, seed=42):
+    rng = np.random.default_rng(seed)
+    Q   = np.zeros((n_s, n_a))
+    eps_decay = (eps_start - eps_end) / n_ep
+    ep_returns = []
+
+    for ep in range(n_ep):
+        s       = rng.integers(0, n_s)
+        ep_ret  = 0.0
+        disc    = 1.0
+        eps     = max(eps_end, eps_start - ep * eps_decay)
+
+        for _ in range(T):
+            a = rng.integers(0, n_a) if rng.uniform() < eps else int(np.argmax(Q[s]))
+            s_next, r = sim_step(s, a, rng)
+            Q[s, a]  += alpha * (r + gamma * np.max(Q[s_next]) - Q[s, a])
+            ep_ret   += disc * r
+            disc     *= gamma
+            s         = s_next
+
+        ep_returns.append(ep_ret)
+
+    return Q, ep_returns
+
+Q_star, ep_returns = q_learning()
+policy_rl = np.argmax(Q_star, axis=1)
+
+print("Q-learning policy (order quantities):")
+for s in range(0, 21, 5):
+    a = policy_rl[s]
+    print(f"  s = {s:2d}  →  order {a:2d}  (order-up-to {s + a})")
+```
+
+### Convergence vs. DP Benchmark
+
+```{python}
+#| label: fig-ql-convergence
+#| fig-cap: "Left: Q-learning rolling-average episode reward vs. the DP benchmark (dashed). Right: policy comparison — Q-learning recovers the DP optimal policy on nearly all inventory states."
+
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+window = 1_500
+roll   = np.convolve(ep_returns, np.ones(window) / window, mode="valid")
+
+# Simulate DP policy to get a comparable benchmark reward
+rng_b    = np.random.default_rng(1)
+dp_rets  = []
+for _ in range(8_000):
+    s, tot, disc = rng_b.integers(0, n_s), 0.0, 1.0
+    for t in range(T):
+        s_next, r = sim_step(s, int(policy_dp[t, s]), rng_b)
+        tot += disc * r;  disc *= gamma;  s = s_next
+    dp_rets.append(tot)
+dp_bench = np.mean(dp_rets)
+
+fig = make_subplots(rows=1, cols=2,
+    subplot_titles=["Convergence (rolling avg reward)", "Policy comparison (period 1)"])
+
+fig.add_trace(go.Scatter(y=roll, mode="lines", name="Q-learning",
+    line=dict(color="steelblue", width=1.5)), row=1, col=1)
+fig.add_hline(y=dp_bench, line_dash="dash", line_color="crimson",
+    annotation_text=f"DP benchmark = {dp_bench:.1f}",
+    annotation_position="right", row=1, col=1)
+
+fig.add_trace(go.Scatter(x=states, y=policy_dp[0], mode="lines+markers",
+    name="DP optimal", line=dict(color="crimson", width=2)), row=1, col=2)
+fig.add_trace(go.Scatter(x=states, y=policy_rl, mode="lines+markers",
+    name="Q-learning", line=dict(color="steelblue", width=2, dash="dash")), row=1, col=2)
+
+fig.update_layout(template="plotly_white", height=400)
+fig.update_xaxes(title_text="Episode", row=1, col=1)
+fig.update_xaxes(title_text="Inventory state", row=1, col=2)
+fig.update_yaxes(title_text="Discounted return", row=1, col=1)
+fig.update_yaxes(title_text="Order quantity", row=1, col=2)
+fig.show()
+
+agree = np.mean(policy_rl == policy_dp[0])
+print(f"Policy agreement (Q-learning vs. DP): {agree:.1%} of states")
+print(f"DP benchmark return: {dp_bench:.2f}")
+```
+
+Q-learning recovers the DP optimal policy from simulated experience alone — no
+knowledge of $P$ or $R$ required. The small disagreements occur on rarely visited
+states; more exploration resolves them.
+
+---
+
+## Why RL Scales When DP Does Not {#sec-rl-scaling}
+
+The tabular approach above works because the state space has 21 elements. Consider
+the multi-product generalisation:
+
+```{python}
+#| label: fig-curse-of-dimensionality
+#| fig-cap: "State space size and memory requirement for tabular DP vs. neural RL (function approximation) as the number of products grows. DP's memory explodes exponentially; neural RL parameter count grows polynomially."
+
+import plotly.graph_objects as go
+import numpy as np
+
+n_items  = np.arange(1, 12)
+dp_states  = (S_MAX + 1) ** n_items          # 21^n states
+dp_mem_gb  = dp_states * 8 / 1e9             # float64 storage
+rl_params  = 512 + 256 * n_items             # simple 2-layer MLP
+
+fig = make_subplots(rows=1, cols=2,
+    subplot_titles=["State space size", "Memory / Parameter count (log scale)"])
+
+fig.add_trace(go.Scatter(x=n_items, y=dp_states, mode="lines+markers",
+    name="DP states (21ⁿ)", line=dict(color="crimson", width=2)), row=1, col=1)
+
+fig.add_trace(go.Scatter(x=n_items, y=dp_mem_gb, mode="lines+markers",
+    name="DP memory (GB)", line=dict(color="crimson", width=2)), row=1, col=2)
+fig.add_trace(go.Scatter(x=n_items, y=rl_params / 1e3, mode="lines+markers",
+    name="Neural RL params (K)", line=dict(color="steelblue", width=2, dash="dash")), row=1, col=2)
+
+fig.update_yaxes(type="log", row=1, col=1)
+fig.update_yaxes(type="log", row=1, col=2)
+fig.update_xaxes(title_text="Number of products", row=1, col=1)
+fig.update_xaxes(title_text="Number of products", row=1, col=2)
+fig.update_layout(template="plotly_white", height=400,
+    legend=dict(x=0.4, y=0.02))
+fig.show()
+
+print("State space vs. number of products:")
+for n in [1, 3, 5, 8, 10]:
+    st = (S_MAX + 1)**n
+    print(f"  {n:2d} products: {st:>20,} states  DP memory: {st * 8 / 1e9:.2e} GB")
+```
+
+At 10 products, tabular DP requires ~170 terabytes just to store the value function.
+A neural Q-network with one hidden layer of 256 units has ~10,000 parameters — six
+orders of magnitude smaller — and can be trained in minutes.
+
+This is the **curse of dimensionality**: DP's complexity is $O(|\mathcal{S}|^2
+|\mathcal{A}|)$, which grows as $(S_{\max}+1)^{2n}$ for $n$ products. RL with
+neural function approximation $Q_\theta(s, a)$ breaks this barrier: the network size
+depends on the *complexity of the policy*, not the raw state count.
+
+---
+
+## Classical OR vs. RL: When to Use Which {#sec-rl-vs-classical}
+
+| Criterion | Dynamic Programming | Q-Learning / RL |
+|---|---|---|
+| Model required? | Yes — $P(s' \mid s,a)$ explicit | No — learned from interaction |
+| State space | Small to medium (≤ $10^6$) | Arbitrarily large with function approx. |
+| Optimality | Exact (finite horizon) | Asymptotic (convergence theorem) |
+| Sample efficiency | No sampling — model-based | Requires many episodes |
+| Interpretability | Full policy table | Opaque if neural network used |
+| Non-stationarity | Requires re-solving | Can adapt online |
+
+Classical OR and RL share the Bellman equation as their unifying foundation. DP
+solves it exactly; RL approximates it from data. When a high-quality model exists
+and the state space is manageable, DP is strictly superior. When the system is
+high-dimensional, partially unknown, or changes over time, RL is the right tool.
 
 ## Summary
 
+| Concept | Formula | Role |
+|---|---|---|
+| MDP | $(S, A, P, R, \gamma)$ | Sequential decision framework |
+| Bellman optimality | $V^*(s) = \max_a [R + \gamma \sum_{s'} P V^*]$ | Foundation of DP and RL |
+| Value iteration | Backward induction over $T$ periods | Exact finite-horizon solution |
+| Q-learning | $Q \leftarrow Q + \alpha[\text{TD error}]$ | Model-free RL via interaction |
+| Curse of dimensionality | $|\mathcal{S}| \sim S_{\max}^n$ | DP fails; RL + function approx. scales |
+
+## Exercises
+
+1. Modify the inventory MDP to add a **lead time of 1 period**: orders placed in
+   period $t$ arrive at the start of period $t+2$. The state must track both on-hand
+   inventory and the in-transit order. Re-solve with DP and compare.
+
+2. Implement **double Q-learning**: maintain two Q-tables $Q_1$ and $Q_2$; update $Q_1$
+   using actions selected by $Q_1$ but evaluated by $Q_2$. Show whether this reduces
+   overestimation and speeds convergence.
+
+3. Replace the tabular Q-table with a **linear function approximator**
+   $Q(s, a) \approx \mathbf{w}^\top \phi(s, a)$ where $\phi$ includes polynomial
+   features of inventory level. Show convergence on the base problem.
+
+4. Extend the inventory problem to **two products** sharing a total storage capacity
+   of 25 units. Solve with DP (state space = $21 \times 21 = 441$) and Q-learning.
+   Compare policies and convergence rates.
+
+5. The Bellman equation also underlies **policy iteration**: alternating between policy
+   evaluation ($V^\pi$ for fixed $\pi$) and policy improvement ($\pi \leftarrow
+   \text{greedy}(V^\pi)$). Implement policy iteration and compare convergence speed
+   vs. value iteration on the inventory problem.
+
 ## Further Reading
+
+- Puterman, Martin L. *Markov Decision Processes: Discrete Stochastic Dynamic
+  Programming*. Wiley, 1994.
+- Sutton, Richard S., and Andrew G. Barto. *Reinforcement Learning: An Introduction*.
+  2nd ed. MIT Press, 2018. (Free PDF at incompleteideas.net.)
+- Powell, Warren B. *Approximate Dynamic Programming: Solving the Curses of
+  Dimensionality*. 2nd ed. Wiley, 2011.
+- Mnih, Volodymyr, et al. "Human-Level Control Through Deep Reinforcement Learning."
+  *Nature* 518 (2015): 529–533. (Original deep Q-network paper.)
