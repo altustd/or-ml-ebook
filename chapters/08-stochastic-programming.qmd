@@ -5,13 +5,442 @@
 - Formulate two-stage stochastic programs with recourse
 - Understand scenario-based representations of uncertainty
 - Apply Sample Average Approximation (SAA) to data-driven problems
-- Solve stochastic programs using PuLP and SciPy
+- Quantify the value of modeling uncertainty via VSS and EVPI
+- Solve stochastic programs using PuLP and NumPy
 :::
 
-## Introduction
+## Why Deterministic Models Break Down
 
-*Coming soon.*
+Every OR model in Part II assumed we know the problem data exactly. In practice, we rarely do. Demand fluctuates. Processing times vary. Costs change. When we ignore this uncertainty and solve a deterministic model using expected values, we often make decisions that perform poorly when reality diverges from the average.
+
+Consider a company planning manufacturing capacity for the next year. Demand could be low, medium, or high depending on market conditions. If the company installs capacity for average demand:
+
+- When demand is high, it leaves revenue on the table (no capacity to fill orders).
+- When demand is low, it has idle capacity it paid for.
+
+Neither outcome is optimal. The correct approach is to model the uncertainty explicitly and make decisions that are good *on average across scenarios*, accounting for the ability to adjust operations after uncertainty resolves. This is stochastic programming.
+
+## The Newsvendor Problem
+
+The newsvendor problem is the simplest and most instructive stochastic program. It appears throughout supply chain management, revenue management, and inventory control.
+
+**Setup.** A newsvendor orders $q$ units of a product before observing demand $D$. Each unit costs $c$ to purchase and sells for $p > c$. Unsold units are salvaged at $s < c$. The vendor must commit to $q$ before demand is known.
+
+**Profit as a function of order quantity and realized demand:**
+
+$$\pi(q, D) = p \min(q, D) + s \max(q - D, 0) - cq $$ {#eq-newsvendor-profit}
+
+The vendor wants to choose $q$ to maximize expected profit:
+
+$$\max_q \; \mathbb{E}_D[\pi(q, D)]$$ {#eq-newsvendor-obj}
+
+**Closed-form solution.** The expected profit is concave in $q$, and the optimal order quantity has a clean analytical solution. Taking the derivative of $\mathbb{E}[\pi(q,D)]$ with respect to $q$ and setting it to zero yields the *critical ratio*:
+
+$$q^* = F^{-1}\!\left(\frac{p - c}{p - s}\right)$$ {#eq-critical-ratio}
+
+where $F^{-1}$ is the inverse CDF of demand. The ratio $\frac{p-c}{p-s}$ is the *critical ratio* — the probability of demand falling below the optimal order quantity. Intuitively, order more when margins are high relative to overage cost; order less when salvage is low.
+
+```{python}
+#| label: fig-newsvendor
+#| fig-cap: "Expected profit as a function of order quantity for a newsvendor with normal demand. The optimal quantity is at the critical ratio."
+
+import numpy as np
+from scipy import stats
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+# Parameters
+c = 10    # purchase cost per unit
+p = 25    # selling price per unit
+s = 4     # salvage value per unit
+
+mu, sigma = 100, 20   # demand ~ Normal(100, 20)
+
+# Critical ratio and optimal q
+cr = (p - c) / (p - s)
+q_star = stats.norm.ppf(cr, mu, sigma)
+
+# Simulate expected profit over range of q values
+q_range = np.linspace(40, 180, 300)
+
+def expected_profit(q, mu, sigma, c, p, s, n_sim=50_000):
+    D = np.random.default_rng(42).normal(mu, sigma, n_sim)
+    profit = p * np.minimum(q, D) + s * np.maximum(q - D, 0) - c * q
+    return profit.mean()
+
+E_profit = [expected_profit(q, mu, sigma, c, p, s) for q in q_range]
+
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=q_range, y=E_profit,
+    mode='lines', name='E[Profit(q)]',
+    line=dict(color='steelblue', width=2)
+))
+fig.add_vline(
+    x=q_star, line_dash='dash', line_color='crimson',
+    annotation_text=f"q* = {q_star:.1f}  (CR = {cr:.2f})",
+    annotation_position='top right'
+)
+fig.update_layout(
+    xaxis_title='Order Quantity q',
+    yaxis_title='Expected Profit ($)',
+    template='plotly_white',
+    height=400
+)
+fig.show()
+```
+
+The newsvendor is solvable analytically because it has a single decision and a single uncertain parameter. Real problems have many decisions and many uncertain parameters, and the recourse structure is more complex. For these, we need the general stochastic programming framework.
+
+## Two-Stage Stochastic Programming
+
+Most practical stochastic programs follow a **two-stage** structure:
+
+1. **First stage (here-and-now):** Make a decision $x$ *before* uncertainty resolves. This decision is the same regardless of what scenario occurs.
+
+2. **Uncertainty resolves:** A scenario $\xi$ (demand, cost, failure, etc.) is revealed.
+
+3. **Second stage (wait-and-see / recourse):** Make a corrective decision $y(\xi)$ *after* observing $\xi$. The recourse action can depend on the realized scenario, but it may be costly.
+
+The general two-stage stochastic linear program is:
+
+$$\min_{x} \; c^\top x + \mathbb{E}_\xi\!\left[Q(x, \xi)\right]$$ {#eq-sp-obj}
+
+$$\text{subject to} \quad Ax = b, \quad x \geq 0$$
+
+where $Q(x, \xi)$ is the **recourse function** — the optimal cost of the second-stage problem given first-stage decision $x$ and scenario $\xi$:
+
+$$Q(x, \xi) = \min_{y} \; q(\xi)^\top y$$ {#eq-recourse}
+
+$$\text{subject to} \quad T(\xi)\,x + W\,y = h(\xi), \quad y \geq 0$$
+
+The matrices $T(\xi)$ and $h(\xi)$ are **technology** and **right-hand side** parameters that depend on the scenario. $W$ (the **recourse matrix**) is typically fixed.
+
+::: {.callout-note}
+**Recourse** means the ability to correct a decision after uncertainty resolves — but at a cost. Stochastic programming assumes you *know* the distribution of $\xi$ when making the first-stage decision, even though you don't yet know the realization.
+:::
+
+## Scenario-Based Formulation
+
+In practice, the expectation in @eq-sp-obj is approximated by a finite set of **scenarios** $\{\xi^1, \xi^2, \ldots, \xi^S\}$ with probabilities $\{p_1, p_2, \ldots, p_S\}$:
+
+$$\min_{x} \; c^\top x + \sum_{s=1}^S p_s \, Q(x, \xi^s)$$ {#eq-scenario-obj}
+
+This is the **extensive form** — expanding all scenarios explicitly into one large LP. Substituting the second-stage problem:
+
+$$\min_{x, \{y^s\}} \; c^\top x + \sum_{s=1}^S p_s \, q^{s\top} y^s$$ {#eq-extensive-form}
+
+$$\text{subject to} \quad Ax = b, \quad x \geq 0$$
+
+$$T^s x + W y^s = h^s \quad \forall s \in \{1,\ldots,S\}$$
+
+$$y^s \geq 0 \quad \forall s$$
+
+The first-stage variable $x$ appears in *every* scenario constraint — it's the **linking variable** that couples all scenarios. This coupling is what makes stochastic programs different from simply solving $S$ independent LPs.
+
+## Worked Example: Capacity Planning Under Demand Uncertainty
+
+A manufacturer must decide how much production capacity $x$ (machine-hours) to install before the demand for the coming year is known. After demand is revealed, the manufacturer can produce up to capacity and incurs a penalty for unmet demand (e.g., lost sales or expedited sourcing).
+
+**Parameters:**
+- Capacity cost: \$50 per machine-hour
+- Production cost: \$20 per unit (one unit = one machine-hour)
+- Penalty for unmet demand: \$80 per unit
+- Demand scenarios: Low (80 units), Medium (120 units), High (160 units)
+- Scenario probabilities: 0.25, 0.50, 0.25
+
+**Decision variables:**
+- $x$: capacity installed (first stage)
+- $y_s$: production in scenario $s$ (second stage)
+- $u_s$: unmet demand in scenario $s$ (second stage)
+
+**Extensive form:**
+
+$$\min_{x, y_s, u_s} \; 50x + \sum_s p_s (20 y_s + 80 u_s)$$
+
+$$\text{subject to:}$$
+$$y_s \leq x \quad \forall s \quad \text{(capacity constraint)}$$
+$$y_s + u_s = d_s \quad \forall s \quad \text{(demand balance)}$$
+$$x, y_s, u_s \geq 0 \quad \forall s$$
+
+```{python}
+#| label: tbl-capacity-sp
+#| tbl-cap: "Two-stage stochastic program for capacity planning: scenarios, probabilities, and second-stage costs."
+
+import pulp
+import pandas as pd
+
+# Problem data
+c_cap   = 50    # capacity cost ($/unit)
+c_prod  = 20    # production cost ($/unit)
+c_pen   = 80    # unmet demand penalty ($/unit)
+
+demands = [80, 120, 160]
+probs   = [0.25, 0.50, 0.25]
+S = len(demands)
+
+# Extensive form LP
+prob = pulp.LpProblem("CapacityPlanning_SP", pulp.LpMinimize)
+
+# Variables
+x = pulp.LpVariable("capacity", lowBound=0)
+y = [pulp.LpVariable(f"production_s{s}", lowBound=0) for s in range(S)]
+u = [pulp.LpVariable(f"unmet_s{s}",      lowBound=0) for s in range(S)]
+
+# Objective
+prob += (
+    c_cap * x
+    + pulp.lpSum(probs[s] * (c_prod * y[s] + c_pen * u[s]) for s in range(S))
+)
+
+# Constraints
+for s in range(S):
+    prob += y[s] <= x,           f"capacity_s{s}"
+    prob += y[s] + u[s] == demands[s], f"demand_balance_s{s}"
+
+prob.solve(pulp.PULP_CBC_CMD(msg=0))
+
+x_opt = pulp.value(x)
+total_cost = pulp.value(prob.objective)
+
+rows = []
+for s in range(S):
+    rows.append({
+        "Scenario": f"s{s+1}",
+        "Demand":   demands[s],
+        "Prob":     probs[s],
+        "Production": round(pulp.value(y[s]), 1),
+        "Unmet":    round(pulp.value(u[s]), 1),
+        "2nd-Stage Cost": round(probs[s] * (c_prod*pulp.value(y[s]) + c_pen*pulp.value(u[s])), 2)
+    })
+
+df = pd.DataFrame(rows)
+print(f"Optimal capacity: {x_opt:.1f} units")
+print(f"Total expected cost: ${total_cost:.2f}")
+print()
+print(df.to_string(index=False))
+```
+
+The stochastic solution installs capacity that balances the cost of idle capacity (low demand) against the penalty for unmet demand (high demand). It is neither the low-demand nor the high-demand optimal — it is the best decision *on average across scenarios*.
+
+## Value of the Stochastic Solution
+
+How much does it cost to *ignore* uncertainty? We quantify this with two metrics.
+
+**Expected Value (EV) solution.** Solve the deterministic problem using expected demand $\bar{d} = \sum_s p_s d_s$:
+
+$$\bar{d} = 0.25 \times 80 + 0.50 \times 120 + 0.25 \times 160 = 120$$
+
+Install capacity $x^{EV}$ for 120 units, then evaluate this fixed capacity across all scenarios.
+
+**Value of the Stochastic Solution (VSS):**
+
+$$\text{VSS} = \text{EEV} - \text{RP}$$ {#eq-vss}
+
+where EEV is the *expected cost of the EV solution* (using $x^{EV}$ and optimizing recourse) and RP is the *recourse problem* (stochastic solution cost). VSS ≥ 0 always; larger VSS means more value from modeling uncertainty.
+
+**Expected Value of Perfect Information (EVPI):**
+
+$$\text{EVPI} = \text{RP} - \text{WS}$$ {#eq-evpi}
+
+where WS is the *wait-and-see* cost — if we could observe each scenario before deciding capacity and optimize separately. EVPI is the most we would pay for a perfect forecast.
+
+```{python}
+#| label: fig-vss-evpi
+#| fig-cap: "Comparison of stochastic solution (RP), deterministic EV solution (EEV), and perfect-information solution (WS). VSS and EVPI quantify the cost of ignoring uncertainty."
+
+# --- Recourse Problem (already solved above) ---
+RP = total_cost
+
+# --- EV solution: solve at expected demand, evaluate across scenarios ---
+d_bar = sum(p * d for p, d in zip(probs, demands))   # = 120
+
+prob_ev = pulp.LpProblem("EV", pulp.LpMinimize)
+x_ev = pulp.LpVariable("x_ev", lowBound=0)
+prob_ev += c_cap * x_ev
+prob_ev += x_ev >= 0
+prob_ev.solve(pulp.PULP_CBC_CMD(msg=0))
+
+# Optimal EV capacity: solve 1-scenario problem at d_bar
+prob_ev2 = pulp.LpProblem("EV2", pulp.LpMinimize)
+xe  = pulp.LpVariable("xe",  lowBound=0)
+ye  = pulp.LpVariable("ye",  lowBound=0)
+ue  = pulp.LpVariable("ue",  lowBound=0)
+prob_ev2 += c_cap * xe + c_prod * ye + c_pen * ue
+prob_ev2 += ye <= xe
+prob_ev2 += ye + ue == d_bar
+prob_ev2.solve(pulp.PULP_CBC_CMD(msg=0))
+x_ev_opt = pulp.value(xe)
+
+# EEV: use x_ev_opt, optimize recourse per scenario
+EEV = c_cap * x_ev_opt
+for s in range(S):
+    prob_r = pulp.LpProblem(f"Recourse_s{s}", pulp.LpMinimize)
+    yr = pulp.LpVariable("yr", lowBound=0)
+    ur = pulp.LpVariable("ur", lowBound=0)
+    prob_r += c_prod * yr + c_pen * ur
+    prob_r += yr <= x_ev_opt
+    prob_r += yr + ur == demands[s]
+    prob_r.solve(pulp.PULP_CBC_CMD(msg=0))
+    EEV += probs[s] * pulp.value(prob_r.objective)
+
+# --- Wait-and-See: solve each scenario independently ---
+WS = 0
+for s in range(S):
+    prob_ws = pulp.LpProblem(f"WS_s{s}", pulp.LpMinimize)
+    xw = pulp.LpVariable("xw", lowBound=0)
+    yw = pulp.LpVariable("yw", lowBound=0)
+    uw = pulp.LpVariable("uw", lowBound=0)
+    prob_ws += c_cap * xw + c_prod * yw + c_pen * uw
+    prob_ws += yw <= xw
+    prob_ws += yw + uw == demands[s]
+    prob_ws.solve(pulp.PULP_CBC_CMD(msg=0))
+    WS += probs[s] * pulp.value(prob_ws.objective)
+
+VSS  = EEV - RP
+EVPI = RP  - WS
+
+# Plot
+labels = ['WS\n(perfect info)', 'RP\n(stochastic)', 'EEV\n(ignore uncertainty)']
+values = [WS, RP, EEV]
+colors = ['#2ecc71', '#3498db', '#e74c3c']
+
+fig = go.Figure(go.Bar(
+    x=labels, y=values,
+    marker_color=colors,
+    text=[f'${v:.0f}' for v in values],
+    textposition='outside'
+))
+fig.add_annotation(
+    x=0.5, y=max(values)*1.08,
+    text=f"EVPI = ${EVPI:.0f}   |   VSS = ${VSS:.0f}",
+    showarrow=False,
+    font=dict(size=13)
+)
+fig.update_layout(
+    yaxis_title='Expected Total Cost ($)',
+    template='plotly_white',
+    height=420,
+    showlegend=False
+)
+fig.show()
+
+print(f"Wait-and-See (WS):        ${WS:.2f}")
+print(f"Recourse Problem (RP):    ${RP:.2f}")
+print(f"EV Solution cost (EEV):   ${EEV:.2f}")
+print(f"VSS  = EEV - RP:          ${VSS:.2f}")
+print(f"EVPI = RP  - WS:          ${EVPI:.2f}")
+```
+
+The interpretation:
+
+- **VSS** is the cost of using expected-value thinking instead of stochastic programming. Paying this much more because we ignored uncertainty.
+- **EVPI** is the maximum worth paying for a perfect forecast. If a market research firm offers demand predictions, refuse to pay more than EVPI.
+
+## Sample Average Approximation (SAA)
+
+Real problems rarely have three tidy scenarios with known probabilities. More often, we have *historical data* — past observations of the uncertain quantity. SAA converts data into scenarios directly.
+
+**Algorithm:**
+
+1. Draw $N$ samples $\{\xi^1, \ldots, \xi^N\}$ from historical data (or a fitted distribution).
+2. Assign equal probability $p_s = 1/N$ to each sample.
+3. Solve the extensive form LP with these $N$ scenarios.
+4. Repeat $M$ times with different samples; take the average optimal cost and check stability.
+
+SAA is the bridge between stochastic programming and data-driven OR. It makes no assumption about the distribution shape — only that historical data is representative.
+
+```{python}
+#| label: fig-saa
+#| fig-cap: "SAA convergence: optimal capacity and objective as sample size grows. Both stabilize around the true stochastic solution as N increases."
+
+import numpy as np
+
+rng = np.random.default_rng(0)
+
+# True demand distribution: Normal(120, 25), clipped at 0
+def sample_demand(n, rng):
+    return np.clip(rng.normal(120, 25, n), 0, None)
+
+def solve_saa(demands_arr, c_cap, c_prod, c_pen):
+    N = len(demands_arr)
+    prob = pulp.LpProblem("SAA", pulp.LpMinimize)
+    x = pulp.LpVariable("x", lowBound=0)
+    y = [pulp.LpVariable(f"y{i}", lowBound=0) for i in range(N)]
+    u = [pulp.LpVariable(f"u{i}", lowBound=0) for i in range(N)]
+    prob += c_cap * x + (1/N) * pulp.lpSum(c_prod*y[i] + c_pen*u[i] for i in range(N))
+    for i in range(N):
+        prob += y[i] <= x
+        prob += y[i] + u[i] == float(demands_arr[i])
+    prob.solve(pulp.PULP_CBC_CMD(msg=0))
+    return pulp.value(x), pulp.value(prob.objective)
+
+sample_sizes = [5, 10, 20, 50, 100, 200, 500]
+n_reps = 20
+
+results = {N: [] for N in sample_sizes}
+for N in sample_sizes:
+    for _ in range(n_reps):
+        d_samp = sample_demand(N, rng)
+        x_opt, obj = solve_saa(d_samp, c_cap, c_prod, c_pen)
+        results[N].append((x_opt, obj))
+
+x_means = [np.mean([r[0] for r in results[N]]) for N in sample_sizes]
+x_stds  = [np.std( [r[0] for r in results[N]]) for N in sample_sizes]
+
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=sample_sizes, y=x_means,
+    error_y=dict(type='data', array=x_stds, visible=True),
+    mode='lines+markers',
+    name='SAA optimal capacity',
+    line=dict(color='steelblue')
+))
+fig.add_hline(
+    y=x_opt, line_dash='dash', line_color='gray',
+    annotation_text='True SP solution (3-scenario)',
+    annotation_position='bottom right'
+)
+fig.update_layout(
+    xaxis_title='SAA Sample Size N',
+    yaxis_title='Optimal Capacity (units)',
+    xaxis_type='log',
+    template='plotly_white',
+    height=400
+)
+fig.show()
+```
+
+As $N$ grows, the SAA solution converges to the true stochastic optimum. The error bars shrink, and instability (variance across replications) decreases. In practice, $N = 100$–$500$ scenarios is often sufficient for LP-based recourse problems.
 
 ## Summary
 
+| Concept | Definition | Role |
+|---|---|---|
+| Two-stage SP | First-stage decision + recourse after uncertainty | Core framework |
+| Scenarios | Discrete realizations $\xi^s$ with probability $p_s$ | Represent uncertainty |
+| Extensive form | Single LP coupling all scenarios via $x$ | Computational approach |
+| VSS | EEV $-$ RP | Cost of ignoring uncertainty |
+| EVPI | RP $-$ WS | Value of perfect forecast |
+| SAA | Replace $\mathbb{E}[\cdot]$ with sample average | Data-driven approach |
+
+The next two chapters extend this framework. @sec-robust drops the assumption that we know the distribution of $\xi$ and instead minimizes the worst-case cost over an *uncertainty set* — a set-valued description of what $\xi$ could be. @sec-simulation addresses problems where the second-stage cost $Q(x, \xi)$ cannot be computed analytically and must be estimated by simulation.
+
+## Exercises
+
+1. The critical ratio in the newsvendor problem is $\frac{p - c}{p - s}$. Derive this from first principles by taking the derivative of $\mathbb{E}[\pi(q, D)]$ and setting it to zero. What happens to $q^*$ as the penalty cost $p - c$ increases? As the overage cost $c - s$ increases?
+
+2. In the capacity planning example, increase the penalty cost from \$80 to \$150. How does the optimal capacity change? Interpret the result in terms of the critical ratio analogy.
+
+3. Modify the SAA code to use a Poisson distribution (with $\lambda = 120$) instead of Normal for demand. How does the optimal capacity change? Why?
+
+4. Compute VSS and EVPI for the capacity planning problem when the demand distribution is symmetric (equal probability of all three scenarios). Then change probabilities to (0.5, 0.3, 0.2). How do VSS and EVPI change, and why?
+
+5. The extensive form LP grows linearly in the number of scenarios $S$. For a problem with 3 first-stage variables and 5 second-stage variables per scenario, how many variables and constraints does the extensive form have for $S = 100$ scenarios? For $S = 10{,}000$? What does this imply for SAA convergence vs. computational tractability?
+
 ## Further Reading
+
+- Birge, John R., and François Louveaux. *Introduction to Stochastic Programming*. 2nd ed. Springer, 2011. (The standard graduate textbook.)
+- Shapiro, Alexander, Darinka Dentcheva, and Andrzej Ruszczyński. *Lectures on Stochastic Programming: Modeling and Theory*. SIAM, 2009. (Rigorous mathematical treatment; free PDF available from SIAM.)
+- King, Alan J., and Stein W. Wallace. *Modeling with Stochastic Programming*. Springer, 2012. (Practical focus on scenario construction and model validation.)
+- Van Slyke, Richard, and Roger Wets. "L-Shaped Linear Programs with Applications to Optimal Control and Stochastic Programming." *SIAM Journal on Applied Mathematics* 17, no. 4 (1969): 638–663. (Original L-shaped decomposition algorithm for large-scale SP.)
