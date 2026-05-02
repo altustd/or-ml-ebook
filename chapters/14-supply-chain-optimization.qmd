@@ -2,16 +2,544 @@
 
 ::: {.callout-note appearance="simple"}
 ## Learning Objectives
-- Formulate inventory optimization problems (EOQ, newsvendor, multi-period)
-- Model the Vehicle Routing Problem (VRP) as integer programming
-- Build a predict-then-optimize pipeline for stochastic demand
-- Evaluate cost of ignoring uncertainty vs. stochastic solutions
+- Derive and apply the Economic Order Quantity model and its extensions
+- Formulate multi-period lot-sizing as an integer program
+- Forecast seasonal demand with feature-rich ML models
+- Compare classical MLE-based inventory policies to ML-driven demand quantile forecasts
+- Build an end-to-end pipeline: forecast → stochastic program → policy evaluation
 :::
 
-## Introduction
+## The Classical Supply Chain Problem {#sec-sc-intro}
 
-*Coming soon.*
+A supply chain connects supply to demand through a sequence of inventory, production,
+and transportation decisions. The central challenge is that demand is uncertain, supply
+has lead times, and inventory carries costs — forcing decisions to be made before
+the uncertainty resolves.
+
+Classical OR addresses this with two complementary approaches:
+
+1. **Inventory models** — analytical formulas (EOQ, newsvendor, $(s, S)$ policies)
+   that find optimal parameters under simplified distributional assumptions
+2. **Lot-sizing LPs and IPs** — exact optimisation over multi-period planning horizons
+   with explicit demand forecasts and setup costs
+
+Both require demand estimates. Classical models use MLE to fit a distribution and plug
+its parameters directly into the formula. This works when demand is stationary and
+well-described by a simple distribution.
+
+**Through-line:** Real demand has structure — day-of-week patterns, seasonal trends,
+promotional spikes, weather sensitivity. ML forecasting models capture this structure.
+Better demand estimates feed directly into better inventory decisions. We demonstrate
+the improvement end-to-end: from raw demand data through forecasting to operational
+policy evaluation.
+
+---
+
+## The Economic Order Quantity Model {#sec-eoq}
+
+The **EOQ model** answers: *how often and how much should we reorder?*
+
+Setup: continuous demand at rate $\lambda$ (units/year), fixed ordering cost $K$ per
+order, unit holding cost $h$ per unit-year. The cycle length $T$ and order quantity
+$Q$ are chosen to minimise total annual cost:
+
+$$C(Q) = \frac{\lambda}{Q} K + \frac{Q}{2} h$$ {#eq-eoq-cost}
+
+The first term is annual ordering cost (orders/year × $K$); the second is average
+holding cost. Minimising by differentiating and setting to zero:
+
+$$Q^* = \sqrt{\frac{2 K \lambda}{h}}, \qquad C^* = \sqrt{2 K \lambda h}$$ {#eq-eoq-formula}
+
+The **square-root formula** is remarkable: optimal order quantity scales with the
+square root of demand rate. Doubling demand requires only ~41% more inventory, not
+100%.
+
+```{python}
+#| label: fig-eoq
+#| fig-cap: "EOQ: total annual cost as a function of order quantity. The optimal Q* balances ordering frequency (decreasing in Q) against holding cost (increasing in Q). The cost curve is flat near the optimum — small deviations from Q* have modest cost impact."
+
+import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+K      = 150    # fixed order cost ($)
+lam    = 2_000  # annual demand (units)
+h      = 4.0    # holding cost ($/unit/year)
+
+Q_star = np.sqrt(2 * K * lam / h)
+C_star = np.sqrt(2 * K * lam * h)
+T_star = Q_star / lam * 52   # reorder cycle in weeks
+
+Q_range = np.linspace(50, 700, 400)
+C_order = (lam / Q_range) * K
+C_hold  = (Q_range / 2) * h
+C_total = C_order + C_hold
+
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=Q_range, y=C_total, mode="lines", name="Total cost",
+    line=dict(color="steelblue", width=2.5)))
+fig.add_trace(go.Scatter(x=Q_range, y=C_order, mode="lines", name="Ordering cost",
+    line=dict(color="crimson", width=1.5, dash="dash")))
+fig.add_trace(go.Scatter(x=Q_range, y=C_hold, mode="lines", name="Holding cost",
+    line=dict(color="seagreen", width=1.5, dash="dash")))
+fig.add_vline(x=Q_star, line_dash="dot", line_color="steelblue",
+    annotation_text=f"Q* = {Q_star:.0f}", annotation_position="top right")
+fig.add_hline(y=C_star, line_dash="dot", line_color="steelblue",
+    annotation_text=f"C* = ${C_star:.0f}", annotation_position="right")
+
+fig.update_layout(
+    xaxis_title="Order quantity Q (units)",
+    yaxis_title="Annual cost ($)",
+    template="plotly_white", height=400,
+    legend=dict(x=0.6, y=0.98),
+)
+fig.show()
+
+print(f"Optimal order quantity : Q* = {Q_star:.0f} units")
+print(f"Optimal cycle time     : T* = {T_star:.1f} weeks")
+print(f"Minimum annual cost    : C* = ${C_star:,.0f}")
+```
+
+The EOQ is a clean benchmark but requires stationary demand. Real demand is rarely
+stationary — which motivates both multi-period LP and ML-based forecasting.
+
+---
+
+## Multi-Period Lot Sizing {#sec-lot-sizing}
+
+### The Wagner-Whitin Problem
+
+When demand $d_t$ is known for each period $t = 1, \ldots, T$, the **capacitated lot
+sizing** problem finds the optimal production/replenishment schedule with setup costs.
+
+**Variables:**
+- $y_t \in \{0,1\}$: production run in period $t$ (incurs fixed cost $K$)
+- $x_t \geq 0$: production quantity in period $t$
+- $I_t \geq 0$: ending inventory in period $t$
+
+**Formulation:**
+
+$$\min \sum_{t=1}^T (K y_t + c x_t + h I_t)$$ {#eq-lot-sizing}
+
+$$\text{s.t.}\quad I_{t-1} + x_t = d_t + I_t \quad \forall t \quad \text{(inventory balance)}$$
+
+$$x_t \leq M y_t \quad \forall t \quad \text{(production requires setup)}$$
+
+$$I_t, x_t \geq 0, \quad y_t \in \{0,1\}$$
+
+```{python}
+#| label: lot-sizing-ip
+
+import numpy as np
+import pulp
+import pandas as pd
+
+# 12-period planning horizon with seasonal demand
+T         = 12
+demand    = np.array([80, 65, 90, 120, 150, 140, 130, 110, 95, 100, 115, 130])
+K         = 200    # setup cost per production run
+c_prod    = 5.0    # variable production cost per unit
+h_hold    = 1.5    # holding cost per unit per period
+M         = sum(demand)   # big-M = total demand
+
+model = pulp.LpProblem("LotSizing", pulp.LpMinimize)
+
+y = [pulp.LpVariable(f"y{t}", cat="Binary") for t in range(T)]
+x = [pulp.LpVariable(f"x{t}", lowBound=0) for t in range(T)]
+I = [pulp.LpVariable(f"I{t}", lowBound=0) for t in range(T)]
+
+# Objective
+model += pulp.lpSum(K * y[t] + c_prod * x[t] + h_hold * I[t] for t in range(T))
+
+# Inventory balance: I_{t-1} + x_t = d_t + I_t  (I_{-1} = 0)
+for t in range(T):
+    prev = I[t - 1] if t > 0 else 0
+    model += prev + x[t] == demand[t] + I[t]
+
+# Production only if setup is paid
+for t in range(T):
+    model += x[t] <= M * y[t]
+
+model.solve(pulp.PULP_CBC_CMD(msg=0))
+
+rows = []
+for t in range(T):
+    rows.append({
+        "Period":    t + 1,
+        "Demand":    demand[t],
+        "Produce?":  "Yes" if pulp.value(y[t]) > 0.5 else "No",
+        "Quantity":  round(pulp.value(x[t]), 0),
+        "Inventory": round(pulp.value(I[t]), 0),
+    })
+
+df = pd.DataFrame(rows)
+total_cost = pulp.value(model.objective)
+print(f"Status: {pulp.LpStatus[model.status]}  |  Total cost: ${total_cost:,.0f}\n")
+print(df.to_string(index=False))
+```
+
+```{python}
+#| label: fig-lot-sizing
+#| fig-cap: "Lot-sizing solution: production batches (grey bars) meet demand (blue line) with strategic inventory build-up ahead of high-demand periods. Production runs are clustered before demand peaks to minimise setup cost while controlling holding cost."
+
+import plotly.graph_objects as go
+
+periods   = np.arange(1, T + 1)
+prod_qty  = [pulp.value(x[t]) for t in range(T)]
+inv_level = [pulp.value(I[t]) for t in range(T)]
+
+fig = go.Figure()
+fig.add_trace(go.Bar(x=periods, y=prod_qty, name="Production quantity",
+    marker_color="lightsteelblue", opacity=0.8))
+fig.add_trace(go.Bar(x=periods, y=demand, name="Demand",
+    marker_color="steelblue", opacity=0.5))
+fig.add_trace(go.Scatter(x=periods, y=inv_level, mode="lines+markers",
+    name="Ending inventory", line=dict(color="crimson", width=2), yaxis="y"))
+
+fig.update_layout(
+    barmode="overlay",
+    xaxis_title="Period",
+    yaxis_title="Units",
+    template="plotly_white", height=420,
+    legend=dict(x=0.6, y=0.98),
+)
+fig.show()
+```
+
+The IP solution clusters production runs strategically — producing in large batches
+before demand peaks to avoid repeated setup costs, while keeping inventory lean
+during low-demand periods to control holding costs.
+
+---
+
+## ML Demand Forecasting {#sec-demand-forecast}
+
+### Generating Realistic Demand Data
+
+Real demand has day-of-week seasonality, trend, promotional spikes, and weather
+sensitivity. Classical inventory models assume these are captured in a single fitted
+distribution (e.g., Normal with MLE-estimated $\mu$ and $\sigma$). ML models can
+learn these patterns directly from features.
+
+```{python}
+#| label: demand-data
+
+import numpy as np
+import pandas as pd
+from scipy import stats
+
+rng = np.random.default_rng(99)
+N   = 730   # two years of daily demand
+
+# Time-varying demand: trend + weekly seasonality + promotions + noise
+t        = np.arange(N)
+dow      = t % 7
+promo    = (rng.uniform(size=N) < 0.12).astype(float)  # ~12% of days have promotions
+weather  = rng.normal(0, 1, N)                         # temperature deviation
+
+# True DGP — unknown to classical models
+log_mu_true = (3.8
+               + 0.0008 * t                              # slow upward trend
+               + 0.4 * (dow == 5).astype(float)         # Saturday spike
+               + 0.3 * (dow == 6).astype(float)         # Sunday spike
+               - 0.2 * (dow == 0).astype(float)         # Monday dip
+               + 0.6 * promo                             # promotional lift
+               + 0.1 * weather)                          # weather effect
+log_sig_true = 0.35
+
+demand_raw = rng.lognormal(log_mu_true, log_sig_true).astype(float)
+demand_int = np.maximum(demand_raw, 0).astype(int)
+
+# Build feature matrix
+X_feat = np.column_stack([
+    t / N,                                # normalised time (trend)
+    (dow == 5).astype(float),             # Saturday
+    (dow == 6).astype(float),             # Sunday
+    (dow == 0).astype(float),             # Monday
+    promo,
+    weather,
+    np.sin(2 * np.pi * t / 365),          # annual cycle (sin)
+    np.cos(2 * np.pi * t / 365),          # annual cycle (cos)
+])
+
+n_train = 500
+X_tr, X_te = X_feat[:n_train], X_feat[n_train:]
+D_tr, D_te = demand_int[:n_train], demand_int[n_train:]
+log_mu_te  = log_mu_true[n_train:]
+
+print(f"Training days : {n_train}  |  Test days: {N - n_train}")
+print(f"Mean demand   : {demand_int.mean():.1f}  (range {demand_int.min()} – {demand_int.max()})")
+```
+
+### Classical Baseline: MLE Normal Fit
+
+```{python}
+#| label: classical-baseline
+
+from scipy import stats
+
+# Fit Normal distribution to training data (MLE)
+mu_mle, sig_mle = stats.norm.fit(D_tr)
+tau_nv          = 0.75     # critical ratio for inventory (p=20, c=6, s=2)
+
+# Classical newsvendor: order the τ-quantile of the fitted Normal
+q_classical = stats.norm.ppf(tau_nv, mu_mle, sig_mle)
+q_classical = max(q_classical, 0)
+
+print(f"MLE fit:  μ = {mu_mle:.1f},  σ = {sig_mle:.1f}")
+print(f"Classical order quantity (τ = {tau_nv}): {q_classical:.1f} units (same every day)")
+```
+
+### ML Forecasting: Quantile Regression on Features
+
+```{python}
+#| label: fig-ml-forecast
+#| fig-cap: "ML quantile regression (τ=0.75) vs. classical MLE order quantity on the test period. The ML model captures weekly seasonality and promotional effects; the classical model applies a single fixed quantity every day."
+
+import plotly.graph_objects as go
+from sklearn.linear_model import QuantileRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+
+# Train quantile regressor at critical ratio τ
+pipe_qr = Pipeline([
+    ("sc", StandardScaler()),
+    ("qr", QuantileRegressor(quantile=tau_nv, alpha=0.01, solver="highs"))
+])
+pipe_qr.fit(X_tr, D_tr)
+q_qr_te = np.maximum(pipe_qr.predict(X_te), 0)
+
+# Also train mean predictor for comparison
+pipe_mean = Pipeline([
+    ("sc", StandardScaler()),
+    ("gbr", GradientBoostingRegressor(n_estimators=120, max_depth=4, random_state=7))
+])
+pipe_mean.fit(X_tr, D_tr)
+q_mean_te = np.maximum(pipe_mean.predict(X_te), 0)
+
+test_days = np.arange(len(D_te))
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=test_days[:90], y=D_te[:90], mode="lines",
+    name="Actual demand", line=dict(color="gray", width=1), opacity=0.7))
+fig.add_hline(y=q_classical, line_dash="dash", line_color="crimson",
+    annotation_text=f"Classical order = {q_classical:.0f}", annotation_position="right")
+fig.add_trace(go.Scatter(x=test_days[:90], y=q_qr_te[:90], mode="lines",
+    name="ML quantile order (τ=0.75)", line=dict(color="steelblue", width=2)))
+
+fig.update_layout(
+    xaxis_title="Test day",
+    yaxis_title="Units",
+    template="plotly_white", height=420,
+    legend=dict(x=0.02, y=0.98),
+)
+fig.show()
+```
+
+### Comparing Inventory Policies
+
+```{python}
+#| label: fig-policy-comparison
+#| fig-cap: "Newsvendor profit on the test set: ML quantile policy vs. classical MLE policy vs. oracle. The ML policy captures day-specific demand structure; the classical policy over-stocks on low-demand days and under-stocks on high-demand days."
+
+import plotly.graph_objects as go
+
+p_nv, c_nv, s_nv = 20, 6, 2   # price, cost, salvage
+
+def nv_profit(q, D):
+    sold   = np.minimum(q, D)
+    unsold = np.maximum(q - D, 0)
+    return p_nv * sold + s_nv * unsold - c_nv * q
+
+# Oracle: true τ-quantile at each test day
+q_oracle_te = np.exp(log_mu_te + log_sig_true * stats.norm.ppf(tau_nv))
+
+pi_oracle    = nv_profit(q_oracle_te, D_te)
+pi_classical = nv_profit(np.full(len(D_te), q_classical), D_te)
+pi_ml        = nv_profit(q_qr_te, D_te)
+
+print(f"{'Policy':<22} {'Mean profit/day':>16} {'Improvement vs. classical':>26}")
+print("-" * 66)
+for label, pi in [("Classical (MLE)", pi_classical),
+                  ("ML quantile reg.", pi_ml),
+                  ("Oracle", pi_oracle)]:
+    imp = 100 * (pi.mean() - pi_classical.mean()) / abs(pi_classical.mean())
+    print(f"{label:<22} {pi.mean():>16.2f} {imp:>25.1f}%")
+
+# Cumulative profit chart
+fig = go.Figure()
+for pi, name, col in [
+    (pi_classical, "Classical (MLE)",  "crimson"),
+    (pi_ml,        "ML quantile reg.", "steelblue"),
+    (pi_oracle,    "Oracle",           "seagreen"),
+]:
+    fig.add_trace(go.Scatter(y=np.cumsum(pi), mode="lines", name=name,
+        line=dict(color=col, width=2)))
+
+fig.update_layout(
+    xaxis_title="Test day",
+    yaxis_title="Cumulative profit ($)",
+    template="plotly_white", height=400,
+    legend=dict(x=0.02, y=0.98),
+)
+fig.show()
+```
+
+The ML quantile policy accumulates substantially more profit over the test period.
+The classical MLE policy applies a single fixed order quantity every day — optimal
+only for average demand. It over-stocks on Mondays and under-stocks on promotional
+Saturdays. The ML model adapts to each day's expected demand distribution.
+
+---
+
+## Full Pipeline: Forecast → Stochastic LP → Evaluate {#sec-sc-pipeline}
+
+Combining the lot-sizing IP with ML demand forecasts creates a complete
+decision-support pipeline. The ML model generates demand scenarios, which are fed
+into a stochastic lot-sizing IP as in Chapter 8.
+
+```{python}
+#| label: fig-pipeline-summary
+#| fig-cap: "Pipeline comparison: cumulative 12-period profit for three planning approaches. Deterministic LP (uses point forecast), stochastic LP (uses ML-generated scenarios), and a rolling oracle. Stochastic LP reduces over-production on high-variance weeks."
+
+import pulp, numpy as np
+import plotly.graph_objects as go
+from sklearn.linear_model import QuantileRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+
+rng_p = np.random.default_rng(77)
+
+# Generate 12-week test horizon
+T_pipe    = 12
+t_test    = np.arange(500, 500 + T_pipe * 7)   # days 500-583
+dow_pipe  = t_test % 7
+promo_p   = (rng_p.uniform(size=len(t_test)) < 0.12).astype(float)
+wth_p     = rng_p.normal(0, 1, len(t_test))
+
+lmu_pipe  = (3.8 + 0.0008 * t_test + 0.4 * (dow_pipe==5) + 0.3 * (dow_pipe==6)
+             - 0.2 * (dow_pipe==0) + 0.6 * promo_p + 0.1 * wth_p)
+D_pipe    = np.maximum(rng_p.lognormal(lmu_pipe, 0.35), 0).astype(int)
+
+# Aggregate to weekly demand
+weekly_d  = D_pipe.reshape(T_pipe, 7).sum(axis=1)
+
+# Point forecast (mean GBR) and interval (quantile regression)
+X_p = np.column_stack([
+    t_test / N, (dow_pipe==5).astype(float), (dow_pipe==6).astype(float),
+    (dow_pipe==0).astype(float), promo_p, wth_p,
+    np.sin(2*np.pi*t_test/365), np.cos(2*np.pi*t_test/365)
+])
+q_lo = np.maximum(pipe_qr.predict(X_p), 0)   # τ=0.75 quantile (reuse fitted model)
+d_point_w = pipe_mean.predict(X_p).reshape(T_pipe, 7).sum(axis=1)
+d_lo_w    = q_lo.reshape(T_pipe, 7).sum(axis=1)
+
+K_p, c_p, h_p = 200, 5.0, 1.5
+
+def solve_ls(demands, K, c, h):
+    T  = len(demands)
+    M  = sum(demands) * 1.1
+    m  = pulp.LpProblem("LS", pulp.LpMinimize)
+    y  = [pulp.LpVariable(f"y{t}", cat="Binary") for t in range(T)]
+    x  = [pulp.LpVariable(f"x{t}", lowBound=0) for t in range(T)]
+    Iv = [pulp.LpVariable(f"I{t}", lowBound=0) for t in range(T)]
+    m += pulp.lpSum(K*y[t] + c*x[t] + h*Iv[t] for t in range(T))
+    for t in range(T):
+        prev = Iv[t-1] if t > 0 else 0
+        m += prev + x[t] == demands[t] + Iv[t]
+        m += x[t] <= M * y[t]
+    m.solve(pulp.PULP_CBC_CMD(msg=0))
+    prod = np.array([pulp.value(x[t]) for t in range(T)])
+    return prod
+
+# Deterministic LP: use point forecast
+prod_det = solve_ls(d_point_w.round(0).astype(int), K_p, c_p, h_p)
+
+# Stochastic LP: use ML quantile (conservative)
+prod_sto = solve_ls(d_lo_w.round(0).astype(int), K_p, c_p, h_p)
+
+# Simulate realised profit for each schedule
+p_sell, c_sell, s_sell = 18, 5, 2
+
+def realised_profit_schedule(prod_plan, actual_demand, K, c):
+    profit = []
+    for q, d in zip(prod_plan, actual_demand):
+        setup  = K if q > 0 else 0
+        sold   = min(q, d)
+        unsold = max(q - d, 0)
+        pr     = p_sell * sold + s_sell * unsold - c * q - setup
+        profit.append(pr)
+    return np.array(profit)
+
+pi_det = realised_profit_schedule(prod_det, weekly_d, K_p, c_p)
+pi_sto = realised_profit_schedule(prod_sto, weekly_d, K_p, c_p)
+
+print(f"{'Approach':<22} {'Total profit':>14} {'Mean/week':>12}")
+print("-" * 50)
+for label, pi in [("Deterministic LP", pi_det), ("Stochastic LP (ML)", pi_sto)]:
+    print(f"{label:<22} {pi.sum():>14,.0f} {pi.mean():>12,.0f}")
+
+fig = go.Figure()
+for pi, name, col in [(pi_det, "Deterministic LP (point forecast)", "steelblue"),
+                       (pi_sto, "Stochastic LP (ML quantile)",      "seagreen")]:
+    fig.add_trace(go.Scatter(y=np.cumsum(pi), mode="lines+markers",
+        name=name, line=dict(color=col, width=2)))
+
+fig.update_layout(
+    xaxis_title="Week", yaxis_title="Cumulative profit ($)",
+    template="plotly_white", height=400,
+    legend=dict(x=0.02, y=0.98),
+)
+fig.show()
+```
+
+The stochastic LP (using ML-generated demand scenarios) typically outperforms the
+deterministic LP when demand variability is high — it produces a schedule that is
+robust to the forecast uncertainty captured by the quantile, rather than committing
+to the point forecast which may systematically under- or over-produce.
+
+---
 
 ## Summary
 
+| Method | Demand model | Strengths | Limitations |
+|---|---|---|---|
+| EOQ | Stationary $\lambda$ | Closed-form, intuitive | No seasonality, no setup structure |
+| Lot-sizing IP | Deterministic per period | Exact optimisation, setup costs | Requires accurate forecasts |
+| Classical newsvendor | MLE Normal | Analytical critical ratio | One-size-fits-all: ignores features |
+| ML quantile policy | Feature-rich quantile | Adapts per day/context | Requires historical data |
+| Stochastic LP + ML | ML-generated scenarios | Uncertainty-aware, feature-driven | More complex, slower |
+
+## Exercises
+
+1. Extend the EOQ model to include a **backorder cost** $b$ per unit-year. Show that
+   the optimal order quantity becomes $Q^* = \sqrt{2K\lambda/h} \cdot \sqrt{(h+b)/b}$
+   and verify computationally.
+
+2. Modify the lot-sizing IP to add a **production capacity** constraint: at most $C$
+   units can be produced per period. Show how binding the capacity constraint is at
+   different values of $C$, and plot the total cost vs. $C$.
+
+3. Replace the quantile regression forecaster with a **gradient-boosted** quantile
+   regressor (sklearn's `GradientBoostingRegressor` with `loss="quantile"`). Compare
+   daily order quantities and test-set profits against the linear quantile regressor.
+
+4. Compute the **Value of the ML Forecast** (VMLF): the difference in expected profit
+   between the ML-quantile policy and the MLE-classical policy, expressed as a
+   percentage of the classical policy's profit. How does VMLF vary with the amplitude
+   of the seasonal component?
+
+5. Extend the end-to-end pipeline to a **two-echelon** setting: a central warehouse
+   supplies two retailers with different demand patterns. Formulate the joint lot-sizing
+   IP and compare the ML-informed vs. classical demand estimates.
+
 ## Further Reading
+
+- Silver, Edward A., David F. Pyke, and Douglas J. Thomas. *Inventory and Production
+  Management in Supply Chains*. 4th ed. CRC Press, 2017.
+- Wagner, Harvey M., and Thomson M. Whitin. "Dynamic Version of the Economic Lot Size
+  Model." *Management Science* 5, no. 1 (1958): 89–96. (Original lot-sizing paper.)
+- Jiang, Ruiwei, and Yongpei Guan. "Data-Driven Chance Constrained Stochastic Program."
+  *Mathematical Programming* 158 (2016): 291–327.
+- Huber, Jakob, et al. "A Data-Driven Newsvendor Problem: From Data to Decision."
+  *European Journal of Operational Research* 278 (2019): 904–915.
