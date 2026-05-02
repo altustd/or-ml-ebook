@@ -25,6 +25,64 @@ averaging the results. It is the practitioner's instrument for measuring what ca
 be derived. This chapter develops the core methods: Monte Carlo integration,
 discrete-event simulation, variance reduction, and surrogate-based optimization.
 
+```{=html}
+<figure style="margin: 2rem 0;">
+<svg viewBox="0 0 720 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;font-family:'DM Sans',system-ui,sans-serif;">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0,8 3,0 6" fill="#6b7280"/>
+    </marker>
+    <marker id="arr-hl" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0,8 3,0 6" fill="#1d4ed8"/>
+    </marker>
+  </defs>
+  <!-- row labels -->
+  <text x="10" y="58"  font-size="10" fill="#9ca3af" letter-spacing=".06em">TRACTABLE</text>
+  <text x="10" y="148" font-size="10" fill="#9ca3af" letter-spacing=".06em">INTRACTABLE</text>
+  <line x1="110" y1="10" x2="110" y2="190" stroke="#e5e7eb" stroke-width="1"/>
+
+  <!-- tractable row -->
+  <rect x="126" y="30" width="130" height="44" rx="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="191" y="52" text-anchor="middle" font-size="12" font-weight="500" fill="#1e40af">Analytical</text>
+  <text x="191" y="66" text-anchor="middle" font-size="10" fill="#3b82f6">LP, DP, closed-form</text>
+
+  <rect x="286" y="30" width="130" height="44" rx="6" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1"/>
+  <text x="351" y="52" text-anchor="middle" font-size="12" font-weight="500" fill="#166534">Stochastic prog.</text>
+  <text x="351" y="66" text-anchor="middle" font-size="10" fill="#16a34a">Scenarios, SAA</text>
+
+  <rect x="446" y="30" width="130" height="44" rx="6" fill="#fefce8" stroke="#fef08a" stroke-width="1"/>
+  <text x="511" y="52" text-anchor="middle" font-size="12" font-weight="500" fill="#854d0e">Robust optim.</text>
+  <text x="511" y="66" text-anchor="middle" font-size="10" fill="#ca8a04">Worst-case sets</text>
+
+  <!-- arrow down -->
+  <line x1="511" y1="74" x2="511" y2="110" stroke="#d1d5db" stroke-width="1" marker-end="url(#arr)"/>
+  <text x="520" y="96" font-size="9" fill="#9ca3af" font-style="italic">fails when Q(x,ξ)</text>
+  <text x="520" y="107" font-size="9" fill="#9ca3af" font-style="italic">has no algebra</text>
+
+  <!-- intractable row — highlighted -->
+  <rect x="126" y="118" width="130" height="50" rx="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="191" y="140" text-anchor="middle" font-size="12" font-weight="500" fill="#1e40af">DES</text>
+  <text x="191" y="155" text-anchor="middle" font-size="10" fill="#3b82f6">Queues, dynamics</text>
+
+  <rect x="286" y="118" width="130" height="50" rx="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="351" y="140" text-anchor="middle" font-size="12" font-weight="500" fill="#1e40af">Monte Carlo</text>
+  <text x="351" y="155" text-anchor="middle" font-size="10" fill="#3b82f6">Integration, risk</text>
+
+  <rect x="446" y="118" width="190" height="50" rx="6" fill="#fdf4ff" stroke="#e9d5ff" stroke-width="1.5"/>
+  <text x="541" y="138" text-anchor="middle" font-size="12" font-weight="600" fill="#7e22ce">Surrogate + BO</text>
+  <text x="541" y="153" text-anchor="middle" font-size="10" fill="#9333ea">GP + Bayesian optim.</text>
+  <text x="541" y="165" text-anchor="middle" font-size="9" fill="#a855f7" font-style="italic">← this chapter</text>
+
+  <!-- horizontal connectors -->
+  <line x1="256" y1="143" x2="286" y2="143" stroke="#6b7280" stroke-width="1" marker-end="url(#arr)"/>
+  <line x1="416" y1="143" x2="446" y2="143" stroke="#6b7280" stroke-width="1" marker-end="url(#arr)"/>
+</svg>
+<figcaption style="font-size:.8rem;color:#6b7280;text-align:center;margin-top:.5rem">
+  Figure: Where simulation sits in the OR toolkit. When analytical structure breaks down, simulation and surrogate-based methods take over.
+</figcaption>
+</figure>
+```
+
 ---
 
 ## Monte Carlo Integration {#sec-mc-integration}
@@ -182,6 +240,63 @@ $$L_q = \frac{\rho^2}{1 - \rho}, \quad W_q = \frac{\rho}{\mu(1-\rho)}, \quad W =
 Simulation confirms these results and extends them to transient behaviour, finite
 buffers, and non-Markovian service times — all analytically intractable.
 
+```{=html}
+<figure style="margin:1.75rem 0;">
+<svg viewBox="0 0 680 230" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:680px;font-family:'DM Sans',system-ui,sans-serif;">
+  <defs>
+    <marker id="a2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4b5563"/></marker>
+  </defs>
+
+  <!-- Priority queue box -->
+  <rect x="20" y="75" width="160" height="80" rx="8" fill="#f0f9ff" stroke="#7dd3fc" stroke-width="1.5"/>
+  <text x="100" y="96" text-anchor="middle" font-size="11" font-weight="600" fill="#0369a1">Priority Queue</text>
+  <text x="100" y="112" text-anchor="middle" font-size="10" fill="#0284c7">(t₁, arr)</text>
+  <text x="100" y="126" text-anchor="middle" font-size="10" fill="#0284c7">(t₂, arr)</text>
+  <text x="100" y="140" text-anchor="middle" font-size="10" fill="#0284c7">(t₃, dep)</text>
+
+  <!-- pop arrow -->
+  <line x1="180" y1="115" x2="226" y2="115" stroke="#4b5563" stroke-width="1.5" marker-end="url(#a2)"/>
+  <text x="203" y="109" text-anchor="middle" font-size="9" fill="#6b7280">heappop</text>
+
+  <!-- dispatch box -->
+  <rect x="228" y="88" width="130" height="52" rx="8" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
+  <text x="293" y="108" text-anchor="middle" font-size="11" font-weight="600" fill="#c2410c">Dispatch</text>
+  <text x="293" y="124" text-anchor="middle" font-size="10" fill="#ea580c">event type?</text>
+
+  <!-- arrival branch -->
+  <line x1="293" y1="140" x2="293" y2="175" stroke="#4b5563" stroke-width="1.2" marker-end="url(#a2)"/>
+  <text x="301" y="162" font-size="9" fill="#6b7280">arrival</text>
+
+  <rect x="218" y="177" width="148" height="44" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2"/>
+  <text x="292" y="195" text-anchor="middle" font-size="10" font-weight="500" fill="#15803d">Server free?</text>
+  <text x="292" y="210" text-anchor="middle" font-size="9" fill="#16a34a">→ serve now  or  join queue</text>
+
+  <!-- departure branch -->
+  <line x1="358" y1="114" x2="440" y2="114" stroke="#4b5563" stroke-width="1.2" marker-end="url(#a2)"/>
+  <text x="399" y="108" text-anchor="middle" font-size="9" fill="#6b7280">departure</text>
+
+  <rect x="442" y="88" width="148" height="52" rx="6" fill="#fdf4ff" stroke="#d8b4fe" stroke-width="1.2"/>
+  <text x="516" y="108" text-anchor="middle" font-size="10" font-weight="500" fill="#7e22ce">Record wait time</text>
+  <text x="516" y="124" text-anchor="middle" font-size="9" fill="#9333ea">serve next in queue</text>
+
+  <!-- push back arrows -->
+  <path d="M516 140 Q516 170 400 185 Q280 200 100 185 Q50 177 50 155" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+  <text x="310" y="200" text-anchor="middle" font-size="9" fill="#94a3b8">heappush next event → repeat</text>
+
+  <!-- done label -->
+  <rect x="590" y="95" width="76" height="36" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="628" y="111" text-anchor="middle" font-size="10" fill="#475569">n_served</text>
+  <text x="628" y="124" text-anchor="middle" font-size="10" fill="#475569">== N? done</text>
+  <line x1="590" y1="114" x2="576" y2="114" stroke="#94a3b8" stroke-width="1" marker-end="url(#a2)"/>
+
+  <text x="340" y="22" text-anchor="middle" font-size="12" font-weight="600" fill="#1e293b">Discrete-Event Simulation — event loop</text>
+</svg>
+<figcaption style="font-size:.8rem;color:#6b7280;text-align:center;margin-top:.5rem">
+  Figure: The DES event loop. Time advances by jumping between events; the priority queue ensures events are always processed in chronological order.
+</figcaption>
+</figure>
+```
+
 ```{python}
 #| label: tbl-mm1-sim
 #| tbl-cap: "M/M/1 simulation: average waiting time vs. analytical Pollaczek-Khinchine formula at four utilisation levels."
@@ -320,6 +435,78 @@ $$\hat{\mu}_c = \frac{1}{N}\sum_{k=1}^N \bigl[f(D^{(k)}) - c^*\bigl(g(D^{(k)}) -
 Choosing $g(D) = D$ (the demand itself) works well for the newsvendor — $\mathbb{E}[D]
 = \mu$ is known, and $D$ is strongly correlated with profit.
 
+```{=html}
+<figure style="margin:1.75rem 0;">
+<svg viewBox="0 0 700 190" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;font-family:'DM Sans',system-ui,sans-serif;">
+  <defs>
+    <marker id="a3" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#4b5563"/></marker>
+  </defs>
+
+  <!-- Panel 1: Standard MC -->
+  <rect x="10" y="10" width="200" height="170" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="110" y="30" text-anchor="middle" font-size="11" font-weight="600" fill="#334155">Standard MC</text>
+  <!-- scatter dots -->
+  <circle cx="60"  cy="90"  r="3" fill="#3b82f6" opacity=".7"/>
+  <circle cx="80"  cy="60"  r="3" fill="#3b82f6" opacity=".7"/>
+  <circle cx="95"  cy="120" r="3" fill="#3b82f6" opacity=".7"/>
+  <circle cx="115" cy="75"  r="3" fill="#3b82f6" opacity=".7"/>
+  <circle cx="130" cy="140" r="3" fill="#3b82f6" opacity=".7"/>
+  <circle cx="150" cy="55"  r="3" fill="#3b82f6" opacity=".7"/>
+  <circle cx="165" cy="105" r="3" fill="#3b82f6" opacity=".7"/>
+  <!-- mean line -->
+  <line x1="30" y1="95" x2="190" y2="95" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <text x="110" y="165" text-anchor="middle" font-size="9" fill="#64748b">Var ≈ σ²/N  ← baseline</text>
+
+  <!-- Panel 2: Antithetic -->
+  <rect x="248" y="10" width="200" height="170" rx="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1"/>
+  <text x="348" y="30" text-anchor="middle" font-size="11" font-weight="600" fill="#166534">Antithetic Variates</text>
+  <!-- paired dots above/below mean -->
+  <circle cx="285" cy="68"  r="3" fill="#16a34a" opacity=".85"/>
+  <circle cx="285" cy="122" r="3" fill="#16a34a" opacity=".85"/>
+  <line x1="285" y1="68" x2="285" y2="122" stroke="#86efac" stroke-width="1"/>
+
+  <circle cx="315" cy="57"  r="3" fill="#16a34a" opacity=".85"/>
+  <circle cx="315" cy="133" r="3" fill="#16a34a" opacity=".85"/>
+  <line x1="315" y1="57" x2="315" y2="133" stroke="#86efac" stroke-width="1"/>
+
+  <circle cx="345" cy="78"  r="3" fill="#16a34a" opacity=".85"/>
+  <circle cx="345" cy="112" r="3" fill="#16a34a" opacity=".85"/>
+  <line x1="345" y1="78" x2="345" y2="112" stroke="#86efac" stroke-width="1"/>
+
+  <circle cx="380" cy="63"  r="3" fill="#16a34a" opacity=".85"/>
+  <circle cx="380" cy="127" r="3" fill="#16a34a" opacity=".85"/>
+  <line x1="380" y1="63" x2="380" y2="127" stroke="#86efac" stroke-width="1"/>
+
+  <circle cx="415" cy="72"  r="3" fill="#16a34a" opacity=".85"/>
+  <circle cx="415" cy="118" r="3" fill="#16a34a" opacity=".85"/>
+  <line x1="415" y1="72" x2="415" y2="118" stroke="#86efac" stroke-width="1"/>
+
+  <line x1="268" y1="95" x2="428" y2="95" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <text x="348" y="165" text-anchor="middle" font-size="9" fill="#15803d">Paired draws cancel deviations → 2–5× ↓ Var</text>
+
+  <!-- Panel 3: Control Variate -->
+  <rect x="486" y="10" width="200" height="170" rx="8" fill="#fdf4ff" stroke="#e9d5ff" stroke-width="1"/>
+  <text x="586" y="30" text-anchor="middle" font-size="11" font-weight="600" fill="#7e22ce">Control Variate</text>
+  <!-- correlated pairs -->
+  <line x1="510" y1="135" x2="660" y2="55" stroke="#d8b4fe" stroke-width="1" stroke-dasharray="3 2"/>
+  <text x="586" y="48" text-anchor="middle" font-size="9" fill="#9333ea">known E[g(D)] = μ_D</text>
+  <circle cx="530" cy="125" r="3" fill="#9333ea" opacity=".85"/>
+  <circle cx="560" cy="112" r="3" fill="#9333ea" opacity=".85"/>
+  <circle cx="590" cy="95"  r="3" fill="#9333ea" opacity=".85"/>
+  <circle cx="620" cy="82"  r="3" fill="#9333ea" opacity=".85"/>
+  <circle cx="650" cy="68"  r="3" fill="#9333ea" opacity=".85"/>
+  <line x1="500" y1="95" x2="668" y2="95" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <!-- residual arrows -->
+  <line x1="590" y1="95" x2="590" y2="82" stroke="#7e22ce" stroke-width="1.5" marker-end="url(#a3)"/>
+  <text x="601" y="92" font-size="8" fill="#7e22ce">residual</text>
+  <text x="586" y="165" text-anchor="middle" font-size="9" fill="#7e22ce">Subtract correlated noise → 5–20× ↓ Var</text>
+</svg>
+<figcaption style="font-size:.8rem;color:#6b7280;text-align:center;margin-top:.5rem">
+  Figure: Variance reduction intuition. Antithetic variates pair each draw with its mirror to cancel deviations. Control variates subtract a correlated, analytically tractable quantity to remove shared noise.
+</figcaption>
+</figure>
+```
+
 ```{python}
 #| label: fig-variance-reduction
 #| fig-cap: "Standard error of expected-profit estimates vs sample size for three estimators. Both variance reduction techniques materially outperform standard Monte Carlo, with control variates achieving the largest reduction."
@@ -407,6 +594,85 @@ $$\text{EI}(q) = \mathbb{E}\!\left[\max\!\left(f^* - f(q),\, 0\right)\right]$$
 
 where $f^*$ is the best observed value. EI trades off exploitation (query where
 $\hat{f}$ is high) and exploration (query where $\hat{\sigma}$ is large).
+
+```{=html}
+<figure style="margin:1.75rem 0;">
+<svg viewBox="0 0 700 210" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;font-family:'DM Sans',system-ui,sans-serif;">
+  <defs>
+    <marker id="a4" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#4b5563"/></marker>
+    <linearGradient id="gp-band" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2563eb" stop-opacity=".18"/>
+      <stop offset="100%" stop-color="#2563eb" stop-opacity=".04"/>
+    </linearGradient>
+  </defs>
+
+  <text x="350" y="18" text-anchor="middle" font-size="12" font-weight="600" fill="#1e293b">Bayesian Optimisation — Surrogate Loop</text>
+
+  <!-- Step boxes -->
+  <!-- 1 -->
+  <rect x="12" y="32" width="112" height="56" rx="7" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.2"/>
+  <text x="68" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="#1d4ed8">① Evaluate</text>
+  <text x="68" y="66" text-anchor="middle" font-size="9" fill="#3b82f6">Run simulation</text>
+  <text x="68" y="78" text-anchor="middle" font-size="9" fill="#3b82f6">at design pts</text>
+
+  <line x1="124" y1="60" x2="148" y2="60" stroke="#4b5563" stroke-width="1.2" marker-end="url(#a4)"/>
+
+  <!-- 2 -->
+  <rect x="150" y="32" width="112" height="56" rx="7" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.2"/>
+  <text x="206" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="#166534">② Fit GP</text>
+  <text x="206" y="66" text-anchor="middle" font-size="9" fill="#16a34a">Mean + uncertainty</text>
+  <text x="206" y="78" text-anchor="middle" font-size="9" fill="#16a34a">posterior</text>
+
+  <line x1="262" y1="60" x2="286" y2="60" stroke="#4b5563" stroke-width="1.2" marker-end="url(#a4)"/>
+
+  <!-- 3 -->
+  <rect x="288" y="32" width="112" height="56" rx="7" fill="#fff7ed" stroke="#fdba74" stroke-width="1.2"/>
+  <text x="344" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="#c2410c">③ Maximise EI</text>
+  <text x="344" y="66" text-anchor="middle" font-size="9" fill="#ea580c">Exploit high mean</text>
+  <text x="344" y="78" text-anchor="middle" font-size="9" fill="#ea580c">+ explore uncertainty</text>
+
+  <line x1="400" y1="60" x2="424" y2="60" stroke="#4b5563" stroke-width="1.2" marker-end="url(#a4)"/>
+
+  <!-- 4 -->
+  <rect x="426" y="32" width="112" height="56" rx="7" fill="#fdf4ff" stroke="#e9d5ff" stroke-width="1.2"/>
+  <text x="482" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="#7e22ce">④ Query next</text>
+  <text x="482" y="66" text-anchor="middle" font-size="9" fill="#9333ea">Evaluate sim at</text>
+  <text x="482" y="78" text-anchor="middle" font-size="9" fill="#9333ea">argmax EI</text>
+
+  <!-- feedback arrow -->
+  <path d="M538 60 Q600 60 600 170 Q600 195 68 195 Q20 195 20 88" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#a4)"/>
+  <text x="620" y="135" text-anchor="middle" font-size="9" fill="#94a3b8" transform="rotate(90,620,135)">repeat until budget</text>
+
+  <!-- EI mini-plot -->
+  <rect x="12" y="112" width="540" height="80" rx="6" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="282" y="127" text-anchor="middle" font-size="9" font-weight="500" fill="#475569">Expected Improvement acquisition function: balance between exploitation and exploration</text>
+  <!-- x axis -->
+  <line x1="30" y1="180" x2="540" y2="180" stroke="#cbd5e1" stroke-width="1"/>
+  <!-- EI curve approximation -->
+  <polyline points="30,178 80,170 120,155 160,162 200,172 240,165 280,140 320,120 360,135 400,158 440,170 480,175 520,178 540,178"
+    fill="none" stroke="#f59e0b" stroke-width="2"/>
+  <!-- GP mean curve -->
+  <polyline points="30,172 80,165 120,148 160,155 200,168 240,160 280,132 320,118 360,130 400,152 440,165 480,170 520,174 540,175"
+    fill="none" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="4 2"/>
+  <!-- uncertainty bands rough -->
+  <polyline points="30,165 80,155 120,138 160,145 200,158 240,152 280,122 320,108 360,120 400,142 440,155 480,162 520,167 540,168"
+    fill="none" stroke="#2563eb" stroke-width=".6" stroke-dasharray="2 2" opacity=".4"/>
+  <polyline points="30,178 80,174 120,158 160,165 200,177 240,168 280,142 320,128 360,140 400,162 440,174 480,178 520,180 540,180"
+    fill="none" stroke="#2563eb" stroke-width=".6" stroke-dasharray="2 2" opacity=".4"/>
+  <!-- best point marker -->
+  <circle cx="320" cy="118" r="4" fill="#ef4444"/>
+  <text x="328" y="115" font-size="8" fill="#ef4444">argmax EI → next query</text>
+  <!-- legend -->
+  <line x1="35" y1="145" x2="55" y2="145" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="4 2"/>
+  <text x="58" y="148" font-size="8" fill="#475569">GP mean</text>
+  <line x1="110" y1="145" x2="130" y2="145" stroke="#f59e0b" stroke-width="2"/>
+  <text x="133" y="148" font-size="8" fill="#475569">EI(q)</text>
+</svg>
+<figcaption style="font-size:.8rem;color:#6b7280;text-align:center;margin-top:.5rem">
+  Figure: Bayesian optimisation loop. The GP surrogate is cheap to evaluate everywhere; the EI acquisition function identifies the next simulation run by balancing exploitation of high-mean regions and exploration of high-uncertainty regions.
+</figcaption>
+</figure>
+```
 
 ```{python}
 #| label: fig-gp-surrogate
